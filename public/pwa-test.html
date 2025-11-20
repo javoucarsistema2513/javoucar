@@ -1,0 +1,33 @@
+// public/pwa-test.html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste PWA - JávouCar</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#FCD34D">
+</head>
+<body>
+    <h1>Teste de PWA para JávouCar</h1>
+    <p>Esta página é usada para testar a funcionalidade PWA.</p>
+    
+    <script>
+        // Verificar se o service worker está registrado
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(function(registration) {
+                    console.log('Service Worker registrado com sucesso:', registration);
+                })
+                .catch(function(error) {
+                    console.log('Erro ao registrar Service Worker:', error);
+                });
+        }
+        
+        // Verificar se o app está sendo executado como PWA
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            console.log('App está sendo executado como PWA');
+        }
+    </script>
+</body>
+</html>
