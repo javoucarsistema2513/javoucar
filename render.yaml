@@ -1,0 +1,22 @@
+# Render deployment configuration for JávouCar
+# This file defines how to deploy the application to Render
+
+services:
+  - type: web
+    name: javoucar
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+
+# Environment variables that need to be set in Render dashboard:
+# VITE_SUPABASE_URL: Your Supabase project URL
+# VITE_SUPABASE_ANON_KEY: Your Supabase anonymous key

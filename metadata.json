@@ -1,0 +1,5 @@
+{
+  "name": "JávouCar",
+  "description": "Sistema inteligente para gerenciamento de alertas veiculares e comunicação entre motoristas.",
+  "requestFramePermissions": []
+}
