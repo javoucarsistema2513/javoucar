@@ -81,9 +81,14 @@ export const VehicleRegistration: React.FC<VehicleRegistrationProps> = ({ onRegi
           onRegistered(plate.toUpperCase());
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao registrar veículo:', error);
-      alert("Erro ao registrar veículo. Tente novamente.");
+      // Mensagem mais amigável para o usuário
+      if (error.message) {
+        alert('Erro ao registrar veículo: ' + error.message);
+      } else {
+        alert('Erro ao registrar veículo. Por favor, tente novamente.');
+      }
     } finally {
       setIsRegistering(false);
     }

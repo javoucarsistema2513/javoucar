@@ -131,27 +131,24 @@ if (!isMockMode) {
     },
     // Adicionando método from para simular consultas ao banco de dados
     from: (table: string) => {
+      // Objeto para armazenar os filtros encadeados
+      let filters: { column: string, value: string }[] = [];
+      let columns: string = '*';
+      
       return {
-        select: (columns: string) => {
-          return {
-            eq: async (column: string, value: string) => {
-              // Simulação de busca de veículo
-              if (table === 'vehicles' && column === 'plate') {
-                // Simula alguns veículos para teste
-                const mockVehicles: any = {
-                  'ABC1234': { plate: 'ABC1234', model: 'Honda Civic', color: 'Prata' },
-                  'XYZ5678': { plate: 'XYZ5678', model: 'Toyota Corolla', color: 'Preto' },
-                  'DEF9012': { plate: 'DEF9012', model: 'Porsche 911', color: 'Amarelo Racing' }
-                };
-                
-                const vehicle = mockVehicles[value.toUpperCase()];
-                if (vehicle) {
-                  return { data: vehicle, error: null };
-                } else {
-                  return { data: null, error: { message: 'Veículo não encontrado' } };
-                }
-              }
-              return { data: null, error: null };
+        select: function(columnsParam: string = '*') {
+          // Armazena as colunas selecionadas
+          columns = columnsParam;
+          
+          // Reset filters for new query
+          filters = [];
+          
+          const queryObject = {
+            eq: function(column: string, value: string) {
+              // Adiciona filtro ao array
+              filters.push({ column, value });
+              // Retorna o próprio objeto para encadeamento
+              return this;
             },
             maybeSingle: function() {
               return this;
@@ -160,6 +157,68 @@ if (!isMockMode) {
               return this;
             }
           };
+          
+          // Se for uma consulta real, adicionamos um método then para executar a consulta
+          if (table === 'vehicles' || table === 'profiles') {
+            // @ts-ignore
+            queryObject.then = async function(resolve, reject) {
+              try {
+                // Simulação de resultados baseados nos filtros
+                let result: any = null;
+                let error: any = null;
+                
+                if (table === 'vehicles') {
+                  // Simula alguns veículos para teste
+                  const mockVehicles: any = {
+                    'ABC1234': { plate: 'ABC1234', model: 'Honda Civic', color: 'Prata', state: 'SP', user_id: 'mock-user-id' },
+                    'XYZ5678': { plate: 'XYZ5678', model: 'Toyota Corolla', color: 'Preto', state: 'RJ', user_id: 'mock-user-id-2' },
+                    'DEF9012': { plate: 'DEF9012', model: 'Porsche 911', color: 'Amarelo Racing', state: 'MG', user_id: 'mock-user-id-3' }
+                  };
+                  
+                  // Aplica filtros
+                  if (filters.length > 0) {
+                    // Para simplificação, vamos verificar apenas o primeiro filtro
+                    const firstFilter = filters[0];
+                    if (firstFilter.column === 'plate') {
+                      result = mockVehicles[firstFilter.value.toUpperCase()] || null;
+                    } else if (firstFilter.column === 'user_id') {
+                      // Encontra veículo pelo user_id
+                      const vehicles = Object.values(mockVehicles);
+                      // @ts-ignore
+                      result = vehicles.find(v => v.user_id === firstFilter.value) || null;
+                    }
+                  } else {
+                    // Retorna todos os veículos
+                    result = Object.values(mockVehicles);
+                  }
+                } else if (table === 'profiles') {
+                  // Simula alguns perfis para teste
+                  const mockProfiles: any = {
+                    'mock-user-id': { id: 'mock-user-id', name: 'João Silva', phone: '(11) 99999-9999' },
+                    'mock-user-id-2': { id: 'mock-user-id-2', name: 'Maria Oliveira', phone: '(21) 98888-8888' },
+                    'mock-user-id-3': { id: 'mock-user-id-3', name: 'Carlos Souza', phone: '(31) 97777-7777' }
+                  };
+                  
+                  // Aplica filtros
+                  if (filters.length > 0) {
+                    const firstFilter = filters[0];
+                    if (firstFilter.column === 'id') {
+                      result = mockProfiles[firstFilter.value] || null;
+                    }
+                  } else {
+                    // Retorna todos os perfis
+                    result = Object.values(mockProfiles);
+                  }
+                }
+                
+                resolve({ data: result, error });
+              } catch (err) {
+                reject(err);
+              }
+            };
+          }
+          
+          return queryObject;
         },
         insert: async (data: any[]) => {
           // Simula inserção de veículo

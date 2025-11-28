@@ -105,7 +105,12 @@ export const RegisterVehicle: React.FC<RegisterVehicleProps> = ({ onNext, onBack
       onNext();
     } catch (error: any) {
       console.error(error);
-      alert('Erro ao cadastrar veículo: ' + error.message);
+      // Mensagem mais amigável para o usuário
+      if (error.message) {
+        alert('Erro ao cadastrar veículo: ' + error.message);
+      } else {
+        alert('Erro ao cadastrar veículo. Por favor, tente novamente.');
+      }
     } finally {
       setIsLoading(false);
     }

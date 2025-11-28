@@ -61,12 +61,14 @@ export const api = {
       }
       
       // Verifica se o veículo já está registrado para este usuário
-      const { data: existingVehicle, error: checkError } = await supabase
+      // Como estamos em modo mock, vamos simplificar a verificação
+      const result = await supabase
         .from('vehicles')
         .select('id')
         .eq('user_id', user.id)
-        .eq('plate', data.plate.toUpperCase())
-        .maybeSingle();
+        .eq('plate', data.plate.toUpperCase());
+      
+      const { data: existingVehicle, error: checkError } = result;
       
       if (checkError) {
         console.error('Erro ao verificar veículo existente:', checkError);
@@ -75,7 +77,7 @@ export const api = {
       
       // Se o veículo já existe para este usuário, atualiza em vez de inserir
       if (existingVehicle) {
-        const { error: updateError } = await supabase
+        const updateResult = await supabase
           .from('vehicles')
           .update({
             model: data.model,
@@ -83,6 +85,8 @@ export const api = {
             state: data.state
           })
           .eq('id', existingVehicle.id);
+        
+        const { error: updateError } = updateResult;
         
         if (updateError) {
           console.error('Erro ao atualizar veículo:', updateError);
@@ -94,7 +98,7 @@ export const api = {
       }
       
       // Se não existe, insere o novo veículo
-      const { error: insertError } = await supabase
+      const insertResult = await supabase
         .from('vehicles')
         .insert([
           {
@@ -105,6 +109,8 @@ export const api = {
             state: data.state
           }
         ]);
+      
+      const { error: insertError } = insertResult;
 
       if (insertError) {
         console.error('Erro ao registrar veículo:', insertError);
@@ -123,11 +129,12 @@ export const api = {
   getVehicleDetails: async (plate: string) => {
     try {
       // Busca o veículo no banco de dados pelo número da placa
-      const { data, error } = await supabase
+      const result = await supabase
         .from('vehicles')
         .select('plate, model, color')
-        .eq('plate', plate.toUpperCase())
-        .single();
+        .eq('plate', plate.toUpperCase());
+      
+      const { data, error } = result;
 
       if (error) {
         console.error('Erro ao buscar veículo:', error);

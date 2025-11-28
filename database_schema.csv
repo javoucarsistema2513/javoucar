@@ -1,0 +1,9 @@
+Tabela,Coluna,Tipo,Constraints
+public.profiles,id,uuid,"references auth.users not null primary key"
+public.profiles,name,text,
+public.profiles,phone,text,
+public.vehicles,plate,text,"primary key"
+public.vehicles,model,text,"not null"
+public.vehicles,color,text,"not null"
+public.vehicles,state,text,"not null"
+public.vehicles,owner_id,uuid,"references public.profiles(id) not null"
