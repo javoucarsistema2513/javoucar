@@ -1,0 +1,130 @@
+// Função para criar um bip sonoro usando Web Audio API
+export const createBeepSound = (frequency: number = 800, duration: number = 200) => {
+  try {
+    // Verificar se o contexto de áudio está disponível
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) {
+      console.warn('Web Audio API não suportada neste navegador');
+      return null;
+    }
+    
+    const audioContext = new AudioContext();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.type = 'square';
+    oscillator.frequency.value = frequency;
+    gainNode.gain.value = 0.3;
+    
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + duration / 1000);
+    
+    return audioContext;
+  } catch (error) {
+    console.error('Erro ao criar som de bip:', error);
+    return null;
+  }
+};
+
+// Função para reproduzir bips contínuos
+export class ContinuousBeepPlayer {
+  private intervalId: any = null;
+  private audioContext: AudioContext | null = null;
+  private isPlaying: boolean = false;
+  private beepCount: number = 0;
+  private maxBeeps: number = 3;
+  
+  // Reproduzir exatamente 3 bips contínuos
+  startContinuousBeeps() {
+    // Se já estiver tocando, não faz nada
+    if (this.isPlaying) {
+      console.log('Bips já estão tocando');
+      return;
+    }
+    
+    console.log('Iniciando sequência de 3 bips contínuos');
+    this.isPlaying = true;
+    this.beepCount = 0;
+    
+    // Reproduzir os 3 bips em sequência rápida
+    this.playThreeBeeps();
+  }
+  
+  // Reproduzir 3 bips em sequência
+  private playThreeBeeps() {
+    if (this.beepCount >= this.maxBeeps || !this.isPlaying) {
+      return;
+    }
+    
+    console.log('Reproduzindo bip', this.beepCount + 1);
+    this.playSingleBeep(800, 150);
+    this.beepCount++;
+    
+    // Programar o próximo bip após um curto intervalo
+    if (this.beepCount < this.maxBeeps) {
+      setTimeout(() => {
+        this.playThreeBeeps();
+      }, 200);
+    }
+    
+    // Após terminar os 3 bips, continuar tocando até parar explicitamente
+    if (this.beepCount === this.maxBeeps) {
+      // Continuar com bips contínuos a cada 1 segundo
+      this.intervalId = setInterval(() => {
+        if (this.isPlaying) {
+          console.log('Reproduzindo bip contínuo adicional');
+          this.playSingleBeep(800, 150);
+        }
+      }, 1000);
+    }
+  }
+  
+  // Parar os bips contínuos
+  stopContinuousBeeps() {
+    // Se não estiver tocando, não faz nada
+    if (!this.isPlaying) {
+      console.log('Bips já estão parados');
+      return;
+    }
+    
+    console.log('Parando bips contínuos');
+    this.isPlaying = false;
+    this.beepCount = 0;
+    
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+    
+    // Fechar o contexto de áudio para liberar recursos
+    if (this.audioContext) {
+      this.audioContext.close().catch(console.error);
+      this.audioContext = null;
+    }
+  }
+  
+  // Reproduzir um único bip
+  playSingleBeep(frequency: number = 800, duration: number = 200) {
+    console.log('Reproduzindo bip simples - frequência:', frequency, 'duração:', duration);
+    this.audioContext = createBeepSound(frequency, duration) || null;
+  }
+  
+  // Reproduzir dois bips curtos (confirmação)
+  playConfirmationBeeps() {
+    console.log('Reproduzindo dois bips de confirmação');
+    this.playSingleBeep(600, 150);
+    
+    // Segundo bip após um pequeno intervalo
+    setTimeout(() => {
+      this.playSingleBeep(600, 150);
+    }, 300);
+  }
+  
+  // Verificar se está tocando
+  isCurrentlyPlaying(): boolean {
+    return this.isPlaying;
+  }
+}

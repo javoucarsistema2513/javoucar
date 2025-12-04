@@ -1,0 +1,101 @@
+/* Estilos responsivos para telas menores */
+
+/* Para telas muito pequenas (menos de 320px) */
+@media (max-width: 319px) {
+  .text-2xl {
+    font-size: 1.25rem; /* 20px */
+  }
+  
+  .p-4 {
+    padding: 0.75rem; /* 12px */
+  }
+  
+  .gap-3 {
+    gap: 0.5rem; /* 8px */
+  }
+  
+  .rounded-xl {
+    border-radius: 0.75rem; /* 12px */
+  }
+}
+
+/* Para telas pequenas (320px a 374px) */
+@media (min-width: 320px) and (max-width: 374px) {
+  .text-2xl {
+    font-size: 1.5rem; /* 24px */
+  }
+  
+  .p-3 {
+    padding: 0.75rem; /* 12px */
+  }
+  
+  .gap-3 {
+    gap: 0.75rem; /* 12px */
+  }
+}
+
+/* Para telas médias (375px a 413px) - iPhone SE, iPhone 8, etc. */
+@media (min-width: 375px) and (max-width: 413px) {
+  .text-2xl {
+    font-size: 1.5rem; /* 24px */
+  }
+  
+  .p-4 {
+    padding: 1rem; /* 16px */
+  }
+}
+
+/* Para telas grandes (414px e acima) - iPhone Plus, tablets pequenos */
+@media (min-width: 414px) {
+  .text-2xl {
+    font-size: 1.5rem; /* 24px */
+  }
+  
+  .p-4 {
+    padding: 1rem; /* 16px */
+  }
+}
+
+/* Ajustes específicos para o sistema de alertas */
+.alert-button-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Ajustes para o campo de entrada de placa */
+.plate-input {
+  font-size: 1.25rem; /* 20px */
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+/* Ajustes para botões */
+.btn-primary {
+  padding: 0.75rem 1rem;
+}
+
+/* Ajustes para o modal */
+.alert-modal-content {
+  margin: 1rem;
+  max-height: calc(100vh - 2rem);
+}
+
+/* Ajustes para o header */
+.header-title {
+  font-size: 1.125rem; /* 18px */
+}
+
+/* Ajustes para o campo de texto personalizado */
+.custom-textarea {
+  font-size: 0.875rem; /* 14px */
+}
+
+/* Ajustes para ícones em telas pequenas */
+.icon-small {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-medium {
+  width: 20px;
+  height: 20px;
+}
