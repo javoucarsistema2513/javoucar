@@ -7,12 +7,19 @@ Antes de executar o projeto, você precisa configurar o Supabase:
 1. Crie um projeto no [Supabase](https://supabase.io/)
 2. Obtenha sua URL do projeto e chave anônima
 3. Configure as tabelas necessárias (veja abaixo)
-4. Adicione as variáveis de ambiente ao arquivo `.env.local`:
+4. Adicione as variáveis de ambiente ao Vercel:
 
-```
-VITE_SUPABASE_URL=sua_url_do_projeto
-VITE_SUPABASE_ANON_KEY=sua_chave_anonima
-```
+### Configuração no Vercel
+
+Para configurar corretamente o Supabase no Vercel:
+
+1. Acesse o dashboard do Vercel
+2. Vá para Settings > Environment Variables
+3. Adicione as seguintes variáveis:
+   ```
+   VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+   VITE_SUPABASE_ANON_KEY=sua_chave_anonima_aqui
+   ```
 
 ### Estrutura do Banco de Dados
 
@@ -73,7 +80,7 @@ O aplicativo foi otimizado para funcionar bem em dispositivos móveis de todos o
 
 1. Install dependencies:
    `npm install`
-2. Set the `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in [.env.local](.env.local)
+2. Set the `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Vercel Environment Variables
 3. Run the app:
    `npm run dev`
    
@@ -148,3 +155,32 @@ Para testar a responsividade do aplicativo:
 - Confirme que o texto é legível sem zoom
 - Teste a orientação paisagem e retrato
 - Verifique o comportamento em conexões lentas
+
+## Solução de Problemas
+
+### Erro "Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL"
+
+Este erro ocorre quando as variáveis de ambiente do Supabase não estão configuradas corretamente no Vercel:
+
+1. Verifique se você adicionou as variáveis de ambiente no dashboard do Vercel:
+   - `VITE_SUPABASE_URL` com a URL completa do seu projeto Supabase (ex: https://seu-projeto.supabase.co)
+   - `VITE_SUPABASE_ANON_KEY` com a chave anônima do seu projeto
+
+2. Certifique-se de que os valores estão corretos e não contêm aspas ou espaços extras
+
+3. Após adicionar as variáveis, faça um novo deploy do seu projeto
+
+4. Verifique se o projeto está reconstruindo corretamente após a adição das variáveis
+
+### Problemas comuns e soluções:
+
+1. **Aplicativo em branco**: Verifique o console do navegador (F12) para erros
+2. **Erros de CORS**: Certifique-se de que as URLs estão configuradas corretamente no Supabase
+3. **Problemas de autenticação**: Verifique se as chaves do Supabase estão corretas
+4. **Dados não persistindo**: Confirme que o Supabase está configurado e acessível
+
+Se continuar tendo problemas, verifique:
+- As variáveis de ambiente estão definidas no Vercel
+- Os valores das variáveis estão corretos
+- O projeto foi reconstruído após a adição das variáveis
+- Não há erros de digitação nas URLs

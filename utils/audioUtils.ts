@@ -29,71 +29,46 @@ export const createBeepSound = (frequency: number = 800, duration: number = 200)
   }
 };
 
-// Função para reproduzir bips contínuos
-export class ContinuousBeepPlayer {
-  private intervalId: any = null;
+// Classe simplificada para reproduzir bips
+export class BeepPlayer {
   private audioContext: AudioContext | null = null;
   private isPlaying: boolean = false;
-  private beepCount: number = 0;
-  private maxBeeps: number = 3;
+  private intervalId: any = null;
   
-  // Reproduzir exatamente 3 bips contínuos
-  startContinuousBeeps() {
-    // Se já estiver tocando, não faz nada
-    if (this.isPlaying) {
-      console.log('Bips já estão tocando');
-      return;
+  // Reproduzir um único bip
+  playSingleBeep(frequency: number = 800, duration: number = 200) {
+    console.log('Reproduzindo bip simples - frequência:', frequency, 'duração:', duration);
+    if (this.audioContext) {
+      this.audioContext.close().catch(console.error);
     }
-    
-    console.log('Iniciando sequência de 3 bips contínuos');
-    this.isPlaying = true;
-    this.beepCount = 0;
-    
-    // Reproduzir os 3 bips em sequência rápida
-    this.playThreeBeeps();
+    this.audioContext = createBeepSound(frequency, duration) || null;
   }
   
-  // Reproduzir 3 bips em sequência
-  private playThreeBeeps() {
-    if (this.beepCount >= this.maxBeeps || !this.isPlaying) {
-      return;
-    }
+  // Reproduzir três bips contínuos (para quando envia mensagem)
+  playContinuousBeeps() {
+    console.log('Iniciando bips contínuos');
+    this.stopContinuousBeeps(); // Parar qualquer reprodução anterior
     
-    console.log('Reproduzindo bip', this.beepCount + 1);
+    // Reproduzir 3 bips rapidamente
     this.playSingleBeep(800, 150);
-    this.beepCount++;
     
-    // Programar o próximo bip após um curto intervalo
-    if (this.beepCount < this.maxBeeps) {
-      setTimeout(() => {
-        this.playThreeBeeps();
-      }, 200);
-    }
+    setTimeout(() => {
+      this.playSingleBeep(800, 150);
+    }, 200);
     
-    // Após terminar os 3 bips, continuar tocando até parar explicitamente
-    if (this.beepCount === this.maxBeeps) {
-      // Continuar com bips contínuos a cada 1 segundo
-      this.intervalId = setInterval(() => {
-        if (this.isPlaying) {
-          console.log('Reproduzindo bip contínuo adicional');
-          this.playSingleBeep(800, 150);
-        }
-      }, 1000);
-    }
+    setTimeout(() => {
+      this.playSingleBeep(800, 150);
+    }, 400);
+    
+    // Continuar tocando até ser interrompido
+    this.intervalId = setInterval(() => {
+      this.playSingleBeep(800, 150);
+    }, 1000);
   }
   
   // Parar os bips contínuos
   stopContinuousBeeps() {
-    // Se não estiver tocando, não faz nada
-    if (!this.isPlaying) {
-      console.log('Bips já estão parados');
-      return;
-    }
-    
     console.log('Parando bips contínuos');
-    this.isPlaying = false;
-    this.beepCount = 0;
-    
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
@@ -104,12 +79,6 @@ export class ContinuousBeepPlayer {
       this.audioContext.close().catch(console.error);
       this.audioContext = null;
     }
-  }
-  
-  // Reproduzir um único bip
-  playSingleBeep(frequency: number = 800, duration: number = 200) {
-    console.log('Reproduzindo bip simples - frequência:', frequency, 'duração:', duration);
-    this.audioContext = createBeepSound(frequency, duration) || null;
   }
   
   // Reproduzir dois bips curtos (confirmação)
@@ -123,8 +92,8 @@ export class ContinuousBeepPlayer {
     }, 300);
   }
   
-  // Verificar se está tocando
-  isCurrentlyPlaying(): boolean {
-    return this.isPlaying;
+  // Limpar recursos ao destruir
+  cleanup() {
+    this.stopContinuousBeeps();
   }
 }

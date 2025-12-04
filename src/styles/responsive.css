@@ -17,9 +17,29 @@
   .rounded-xl {
     border-radius: 0.75rem; /* 12px */
   }
+  
+  /* Ajustes específicos para o formulário de login/cadastro */
+  .auth-form-container {
+    padding: 0.5rem;
+  }
+  
+  .auth-header {
+    min-height: 140px;
+  }
+  
+  .auth-form-content {
+    padding: 0.75rem;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+  }
+  
+  .auth-button {
+    padding: 0.6rem;
+    font-size: 0.875rem;
+  }
 }
 
-/* Para telas pequenas (320px a 374px) */
+/* Para telas pequenas (320px a 374px) - iPhone SE, iPhone 8 */
 @media (min-width: 320px) and (max-width: 374px) {
   .text-2xl {
     font-size: 1.5rem; /* 24px */
@@ -32,9 +52,47 @@
   .gap-3 {
     gap: 0.75rem; /* 12px */
   }
+  
+  /* Ajustes específicos para o formulário de login/cadastro */
+  .auth-form-container {
+    padding: 0.75rem;
+  }
+  
+  .auth-header {
+    min-height: 160px;
+  }
+  
+  .auth-form-content {
+    padding: 1rem;
+    border-top-left-radius: 1.25rem;
+    border-top-right-radius: 1.25rem;
+    margin-top: -0.75rem;
+  }
+  
+  .auth-button {
+    padding: 0.75rem;
+  }
+  
+  /* Ajustes para o sistema de alertas */
+  .alert-system-header {
+    padding: 0.75rem;
+  }
+  
+  .alert-system-content {
+    padding: 0.75rem;
+  }
+  
+  .alert-button-grid {
+    gap: 0.5rem;
+  }
+  
+  .alert-modal-content {
+    margin: 0.5rem;
+    max-height: calc(100vh - 1rem);
+  }
 }
 
-/* Para telas médias (375px a 413px) - iPhone SE, iPhone 8, etc. */
+/* Para telas médias (375px a 413px) - iPhone 8, iPhone SE (2nd gen) */
 @media (min-width: 375px) and (max-width: 413px) {
   .text-2xl {
     font-size: 1.5rem; /* 24px */
@@ -42,6 +100,36 @@
   
   .p-4 {
     padding: 1rem; /* 16px */
+  }
+  
+  /* Ajustes específicos para o formulário de login/cadastro */
+  .auth-form-container {
+    padding: 1rem;
+  }
+  
+  .auth-header {
+    min-height: 180px;
+  }
+  
+  .auth-form-content {
+    padding: 1.25rem;
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+    margin-top: -1rem;
+  }
+  
+  /* Ajustes para o sistema de alertas */
+  .alert-system-header {
+    padding: 1rem;
+  }
+  
+  .alert-system-content {
+    padding: 1rem;
+    padding-bottom: 5rem;
+  }
+  
+  .alert-button-grid {
+    gap: 0.75rem;
   }
 }
 
@@ -53,6 +141,22 @@
   
   .p-4 {
     padding: 1rem; /* 16px */
+  }
+  
+  /* Ajustes específicos para o formulário de login/cadastro */
+  .auth-form-container {
+    padding: 1rem;
+  }
+  
+  .auth-header {
+    min-height: 180px;
+  }
+  
+  .auth-form-content {
+    padding: 1.5rem;
+    border-top-left-radius: 2rem;
+    border-top-right-radius: 2rem;
+    margin-top: -1.25rem;
   }
 }
 
@@ -98,4 +202,29 @@
 .icon-medium {
   width: 20px;
   height: 20px;
+}
+
+/* Ajustes para o container principal */
+.app-container {
+  max-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* Ajustes para o conteúdo do formulário */
+.form-content {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ajustes para o rodapé fixo */
+.fixed-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.75rem;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  z-index: 20;
 }

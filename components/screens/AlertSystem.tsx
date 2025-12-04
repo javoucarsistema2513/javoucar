@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Siren, Ban, Lightbulb, Unlock, BellRing, CircleDashed, Wind, MessageSquare, Check } from 'lucide-react';
+import { Send, Search, MessageSquare, Check, BellRing, Siren, Ban, Lightbulb, Unlock, CircleDashed, Wind, Car } from 'lucide-react';
 import { Button } from '../Button';
-import { PREDEFINED_ALERTS } from '../../constants';
-import { AlertOption } from '../../types';
-import { api } from '../../services/api';
 import { AlertModal } from '../AlertModal';
+import { PREDEFINED_ALERTS } from '../../constants';
 import { useSocket } from '../../hooks/useSocket';
-import { ContinuousBeepPlayer } from '../../utils/audioUtils';
+import { api } from '../../services/api';
+import { BeepPlayer } from '../../utils/audioUtils';
 
 interface AlertSystemProps {
   onLogout: () => void;
@@ -14,107 +13,95 @@ interface AlertSystemProps {
 
 export const AlertSystem: React.FC<AlertSystemProps> = ({ onLogout }) => {
   const [targetPlate, setTargetPlate] = useState('');
-  const [selectedAlert, setSelectedAlert] = useState<AlertOption | null>(null);
+  const [selectedAlert, setSelectedAlert] = useState<any>(null);
   const [customMessage, setCustomMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  
-  // State for the Received Modal
   const [showReceivedModal, setShowReceivedModal] = useState(false);
   const [receivedAlertData, setReceivedAlertData] = useState<any>(null);
-  
-  // State for incoming alerts
   const [incomingAlert, setIncomingAlert] = useState<any>(null);
+  const [confirmationMessage, setConfirmationMessage] = useState('');
+  const [showSentModal, setShowSentModal] = useState(false); // Novo estado para modal ao enviar
   
-  // State for confirmation message
-  const [confirmationMessage, setConfirmationMessage] = useState<string | null>(null);
-  
-  // Player de áudio para bips contínuos (mantém uma única instância)
-  const beepPlayerRef = useRef<ContinuousBeepPlayer>(new ContinuousBeepPlayer());
-  
-  // Socket.IO
   const socket = useSocket();
-
-  const iconMap: Record<string, React.ReactNode> = {
+  const beepPlayerRef = useRef<BeepPlayer | null>(null);
+  
+  // Icon mapping
+  const iconMap: Record<string, React.ReactElement> = {
+    BellRing: <BellRing size={20} />,
     Siren: <Siren size={20} />,
     Ban: <Ban size={20} />,
     Lightbulb: <Lightbulb size={20} />,
     Unlock: <Unlock size={20} />,
-    BellRing: <BellRing size={20} />,
     CircleDashed: <CircleDashed size={20} />,
-    Wind: <Wind size={20} />
+    Wind: <Wind size={20} />,
+    Car: <Car size={20} />
   };
-
-  // Efeito para escutar eventos do socket
+  
+  // Initialize audio player
+  useEffect(() => {
+    beepPlayerRef.current = new BeepPlayer();
+    
+    return () => {
+      if (beepPlayerRef.current) {
+        beepPlayerRef.current.cleanup();
+      }
+    };
+  }, []);
+  
+  // Socket event listeners
   useEffect(() => {
     if (!socket) return;
-
-    // Escutar por alertas recebidos
-    socket.on('receive_vehicle_alert', (data) => {
-      console.log('Alerta recebido:', data);
+    
+    const handleIncomingAlert = (data: any) => {
+      console.log('Received alert:', data);
       setIncomingAlert(data);
-      setShowReceivedModal(true);
-      setReceivedAlertData({
-        plate: data.vehicleData?.plate || 'Desconhecida',
-        model: data.vehicleData?.model || 'Veículo Desconhecido',
-        color: data.vehicleData?.color || 'Desconhecida',
-        message: data.message,
-        iconName: 'BellRing',
-        category: 'info'
-      });
       
-      // Iniciar bips contínuos quando receber um alerta
-      // De acordo com os requisitos, deve tocar 3 bips contínuos
-      beepPlayerRef.current.startContinuousBeeps();
-    });
-
-    // Escutar por confirmação de alerta
-    socket.on('alert_confirmation_received', (data) => {
-      console.log('Confirmação recebida:', data);
-      setConfirmationMessage(data.message);
+      // Play continuous beeps
+      if (beepPlayerRef.current) {
+        beepPlayerRef.current.playContinuousBeeps();
+      }
       
-      // Mostrar mensagem de confirmação por alguns segundos
-      setTimeout(() => {
-        setConfirmationMessage(null);
-      }, 5000);
-    });
-
-    // Escutar por erros de alerta
-    socket.on('alert_error', (data) => {
-      console.log('Erro no alerta:', data);
-      alert(data.message);
-    });
-
-    // Limpar listeners quando o componente desmontar
+      // Show modal with vehicle data if available
+      if (data.vehicleData) {
+        setReceivedAlertData(data.vehicleData);
+        setShowReceivedModal(true);
+      }
+    };
+    
+    const handleAlertConfirmed = (data: any) => {
+      console.log('Alert confirmed:', data);
+      setConfirmationMessage(`Confirmação recebida do veículo ${data.targetPlate}`);
+      setTimeout(() => setConfirmationMessage(''), 5000);
+    };
+    
+    socket.on('receive_alert', handleIncomingAlert);
+    socket.on('alert_confirmed', handleAlertConfirmed);
+    
     return () => {
-      socket.off('receive_vehicle_alert');
-      socket.off('alert_confirmation_received');
-      socket.off('alert_error');
-      // Parar qualquer bip que esteja tocando
-      beepPlayerRef.current.stopContinuousBeeps();
+      socket.off('receive_alert', handleIncomingAlert);
+      socket.off('alert_confirmed', handleAlertConfirmed);
     };
   }, [socket]);
-
+  
   const handleSend = async () => {
-    if (!targetPlate) {
-      alert("Por favor, digite a placa do veículo.");
+    if (!targetPlate.trim()) {
+      alert("Por favor, informe a placa do veículo destino.");
       return;
     }
-    if (!selectedAlert && !customMessage) {
-      alert("Selecione um alerta ou escreva uma mensagem.");
-      return;
-    }
-
+    
     setIsSending(true);
-    const finalMessage = customMessage || selectedAlert?.label || '';
-    const alertType = selectedAlert?.id || 'custom';
     
     try {
-      // Enviar alerta via Socket.IO
-      socket.emit('send_vehicle_alert', {
+      // Determine final message
+      const finalMessage = selectedAlert ? selectedAlert.message : customMessage;
+      const alertType = selectedAlert ? selectedAlert.type : 'custom';
+      
+      // Emit to Socket.IO server
+      socket.emit('send_alert', {
         targetPlate: targetPlate.toUpperCase(),
-        senderId: 'currentUser', // Em uma implementação real, isso viria do usuário autenticado
         message: finalMessage,
+        alertType,
         vehicleData: {
           plate: targetPlate.toUpperCase(),
           model: 'Veículo Desconhecido', // Em uma implementação real, buscaríamos do banco de dados
@@ -126,10 +113,22 @@ export const AlertSystem: React.FC<AlertSystemProps> = ({ onLogout }) => {
       // Também manter a chamada à API para compatibilidade
       const response = await api.sendAlert(targetPlate, finalMessage, alertType);
       
-      // If we received vehicle data, show the recipient modal
+      // Show modal with vehicle data if available
       if (response.vehicleData) {
         setReceivedAlertData(response.vehicleData);
-        setShowReceivedModal(true);
+        setShowSentModal(true); // Mostrar modal ao enviar
+        
+        // Play continuous beeps when sending
+        if (beepPlayerRef.current) {
+          beepPlayerRef.current.playContinuousBeeps();
+          
+          // Stop beeps after 5 seconds (simulating the recipient confirming)
+          setTimeout(() => {
+            if (beepPlayerRef.current) {
+              beepPlayerRef.current.stopContinuousBeeps();
+            }
+          }, 5000);
+        }
       }
       
       setShowSuccess(true);
@@ -146,17 +145,18 @@ export const AlertSystem: React.FC<AlertSystemProps> = ({ onLogout }) => {
       setIsSending(false);
     }
   };
-
+  
   // Função para lidar com a confirmação do alerta recebido
   const handleAlertConfirmation = () => {
     // Parar os bips contínuos
-    beepPlayerRef.current.stopContinuousBeeps();
+    beepPlayerRef.current?.stopContinuousBeeps();
     
     // Reproduzir dois bips finais de confirmação
-    beepPlayerRef.current.playConfirmationBeeps();
+    beepPlayerRef.current?.playConfirmationBeeps();
     
     // Fechar o modal
     setShowReceivedModal(false);
+    setShowSentModal(false); // Também fechar o modal de envio
     setIncomingAlert(null);
     setReceivedAlertData(null);
     
@@ -169,7 +169,7 @@ export const AlertSystem: React.FC<AlertSystemProps> = ({ onLogout }) => {
       });
     }
   };
-
+  
   if (showSuccess) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-brand-yellow px-4 animate-in fade-in duration-300">
@@ -182,9 +182,9 @@ export const AlertSystem: React.FC<AlertSystemProps> = ({ onLogout }) => {
       </div>
     );
   }
-
+  
   return (
-    <div className="flex flex-col h-full bg-gray-50 relative">
+    <div className="flex flex-col h-full bg-gray-50 relative app-container">
       {/* Mensagem de confirmação flutuante */}
       {confirmationMessage && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-500 text-white px-4 py-2 rounded-full shadow-lg animate-in slide-in-from-top duration-300 text-sm max-w-[90%]">
@@ -195,6 +195,14 @@ export const AlertSystem: React.FC<AlertSystemProps> = ({ onLogout }) => {
         </div>
       )}
       
+      {/* Modal de Envio (mostrado quando envia mensagem) */}
+      <AlertModal 
+        isOpen={showSentModal} 
+        onClose={handleAlertConfirmation} 
+        onConfirm={handleAlertConfirmation}
+        data={receivedAlertData}
+      />
+      
       {/* Modal de Recebimento */}
       <AlertModal 
         isOpen={showReceivedModal} 
@@ -204,7 +212,7 @@ export const AlertSystem: React.FC<AlertSystemProps> = ({ onLogout }) => {
       />
       
       {/* Header */}
-      <header className="bg-brand-dark text-white p-4 pb-8 rounded-b-3xl shadow-lg z-10">
+      <header className="bg-brand-dark text-white p-4 pb-8 rounded-b-3xl shadow-lg z-10 alert-system-header">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-lg font-bold">Jávou<span className="text-brand-yellow">Car</span></h1>
           <button onClick={onLogout} className="text-xs text-gray-400 hover:text-white transition-colors">Sair</button>
@@ -219,17 +227,17 @@ export const AlertSystem: React.FC<AlertSystemProps> = ({ onLogout }) => {
                     onChange={(e) => setTargetPlate(e.target.value.toUpperCase())}
                     placeholder="Digite a PLACA"
                     maxLength={8}
-                    className="w-full bg-gray-800 border-none rounded-xl py-3 pl-10 pr-4 text-xl font-mono tracking-widest text-white placeholder-gray-600 focus:ring-2 focus:ring-brand-yellow uppercase"
+                    className="w-full bg-gray-800 border-none rounded-xl py-3 pl-10 pr-4 text-xl font-mono tracking-widest text-white placeholder-gray-600 focus:ring-2 focus:ring-brand-yellow uppercase plate-input"
                 />
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
             </div>
         </div>
       </header>
       
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-20 -mt-4">
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-20 -mt-4 alert-system-content form-content">
         <div className="mb-5">
             <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Alertas Rápidos</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 alert-button-grid">
             {PREDEFINED_ALERTS.map((alert) => (
                 <button
                 key={alert.id}
@@ -262,7 +270,7 @@ export const AlertSystem: React.FC<AlertSystemProps> = ({ onLogout }) => {
                 <div className="flex items-start gap-2">
                     <MessageSquare className="text-gray-400 mt-1" size={18} />
                     <textarea
-                        className="w-full resize-none bg-transparent border-none focus:ring-0 p-0 text-gray-700 placeholder-gray-400 text-sm"
+                        className="w-full resize-none bg-transparent border-none focus:ring-0 p-0 text-gray-700 placeholder-gray-400 text-sm custom-textarea"
                         rows={3}
                         placeholder="Digite uma mensagem personalizada..."
                         value={customMessage}
@@ -276,7 +284,7 @@ export const AlertSystem: React.FC<AlertSystemProps> = ({ onLogout }) => {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/80 backdrop-blur-md border-t border-gray-200 z-20">
+      <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/80 backdrop-blur-md border-t border-gray-200 z-20 fixed-footer">
         <div className="max-w-md mx-auto">
             <Button 
                 fullWidth 

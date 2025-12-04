@@ -8,7 +8,7 @@ interface OnboardingProps {
 
 export const Onboarding: React.FC<OnboardingProps> = ({ onNext }) => {
   return (
-    <div className="flex flex-col h-full items-center justify-between p-8 relative overflow-hidden bg-black">
+    <div className="flex flex-col h-full items-center justify-between p-4 md:p-8 relative overflow-hidden bg-black app-container">
       {/* Background Image - Dark/Black Car Aesthetic */}
       <div 
         className="absolute inset-0 z-0"
@@ -22,18 +22,18 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onNext }) => {
       
       {/* Gradient Overlay - Adjusted for less "faded" look, more dramatic */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/90 z-0" />
-
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center w-full text-center mt-20">
-        <div className="relative mb-12 group">
+      
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center w-full text-center mt-16 md:mt-20">
+        <div className="relative mb-8 md:mb-12 group">
           <div className="absolute -inset-4 bg-brand-yellow/20 rounded-full blur-2xl group-hover:bg-brand-yellow/30 transition-all duration-500"></div>
-          <div className="relative bg-black/40 backdrop-blur-md border border-white/10 p-8 rounded-3xl shadow-2xl ring-1 ring-white/20">
-            <Car size={56} className="text-brand-yellow mb-2 drop-shadow-lg" />
-            <ShieldAlert size={28} className="text-white absolute top-3 right-3" />
+          <div className="relative bg-black/40 backdrop-blur-md border border-white/10 p-6 md:p-8 rounded-3xl shadow-2xl ring-1 ring-white/20">
+            <Car size={48} className="text-brand-yellow mb-2 drop-shadow-lg" />
+            <ShieldAlert size={24} className="text-white absolute top-2 right-2 md:top-3 md:right-3" />
           </div>
         </div>
         
         <h1 
-          className="text-6xl font-extrabold text-white mb-6 tracking-tighter"
+          className="text-4xl md:text-6xl font-extrabold text-white mb-4 md:mb-6 tracking-tighter"
           style={{ textShadow: '0 5px 15px rgba(0,0,0,0.9)' }}
         >
           Jávou<span className="text-brand-yellow">Car</span>
@@ -41,18 +41,18 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onNext }) => {
         
         {/* Texto com contraste forçado via style manual para garantir visibilidade */}
         <p 
-          className="text-white text-xl max-w-xs mx-auto leading-relaxed font-bold"
+          className="text-white text-base md:text-xl max-w-xs mx-auto leading-relaxed font-bold"
           style={{ textShadow: '0 2px 4px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.8)' }}
         >
           Comunicação rápida e inteligente entre motoristas.
         </p>
       </div>
-
-      <div className="w-full mb-10 z-10 space-y-4">
-        <Button onClick={onNext} fullWidth className="shadow-xl shadow-brand-yellow/20 border-none py-4 text-lg">
+      
+      <div className="w-full mb-6 md:mb-10 z-10 space-y-4">
+        <Button onClick={onNext} fullWidth className="shadow-xl shadow-brand-yellow/20 border-none py-3 md:py-4 text-base md:text-lg">
           Começar Agora
         </Button>
-        <p className="text-center text-gray-400 text-sm font-medium" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>v1.0.0</p>
+        <p className="text-center text-gray-400 text-xs md:text-sm font-medium" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>v1.0.0</p>
       </div>
     </div>
   );

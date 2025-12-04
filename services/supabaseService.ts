@@ -5,6 +5,11 @@ export const supabaseService = {
   // User authentication
   async signUp(email: string, password: string, userData: UserData) {
     try {
+      // Verificar se o cliente Supabase está disponível
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
       // Sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -39,6 +44,11 @@ export const supabaseService = {
 
   async signIn(email: string, password: string) {
     try {
+      // Verificar se o cliente Supabase está disponível
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -64,6 +74,11 @@ export const supabaseService = {
 
   async signOut() {
     try {
+      // Verificar se o cliente Supabase está disponível
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
       const { error } = await supabase.auth.signOut()
       if (error) throw error
       return { success: true }
@@ -75,6 +90,11 @@ export const supabaseService = {
 
   async recoverPassword(email: string) {
     try {
+      // Verificar se o cliente Supabase está disponível
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
       const { data, error } = await supabase.auth.resetPasswordForEmail(email)
       if (error) throw error
       return { success: true, data }
@@ -87,6 +107,11 @@ export const supabaseService = {
   // User management
   async getUserProfile(userId: string) {
     try {
+      // Verificar se o cliente Supabase está disponível
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -104,6 +129,11 @@ export const supabaseService = {
   // Vehicle management
   async registerVehicle(vehicleData: VehicleData, userId: string) {
     try {
+      // Verificar se o cliente Supabase está disponível
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
       const { data, error } = await supabase
         .from('vehicles')
         .insert([
@@ -129,6 +159,11 @@ export const supabaseService = {
 
   async getUserVehicles(userId: string) {
     try {
+      // Verificar se o cliente Supabase está disponível
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
       const { data, error } = await supabase
         .from('vehicles')
         .select('*')
@@ -144,6 +179,11 @@ export const supabaseService = {
 
   async getVehicleByPlate(plate: string) {
     try {
+      // Verificar se o cliente Supabase está disponível
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
       const { data, error } = await supabase
         .from('vehicles')
         .select(`
@@ -169,6 +209,11 @@ export const supabaseService = {
     alertType?: string
   ) {
     try {
+      // Verificar se o cliente Supabase está disponível
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
       // Get target vehicle and user
       const vehicleResult = await this.getVehicleByPlate(targetPlate)
       if (!vehicleResult.success) {
@@ -200,6 +245,11 @@ export const supabaseService = {
 
   async getUserAlerts(userId: string) {
     try {
+      // Verificar se o cliente Supabase está disponível
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
       const { data, error } = await supabase
         .from('alerts')
         .select(`
@@ -220,6 +270,11 @@ export const supabaseService = {
 
   async markAlertAsRead(alertId: string) {
     try {
+      // Verificar se o cliente Supabase está disponível
+      if (!supabase) {
+        throw new Error('Supabase client not initialized')
+      }
+
       const { data, error } = await supabase
         .from('alerts')
         .update({ is_read: true })

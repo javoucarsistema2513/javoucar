@@ -1,32 +1,44 @@
-import React, { useState } from 'react';
-import { Mail, Lock, ArrowLeft, UserPlus, ShieldAlert } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Lock, ArrowLeft, ShieldAlert, UserPlus } from 'lucide-react';
 import { Button } from '../Button';
 import { Input } from '../Input';
 import { api } from '../../services/api';
 
 interface LoginProps {
   onLoginSuccess: (userData: any) => void;
-  onRegisterClick: () => void;
-  onForgotPasswordClick: () => void;
   onBack: () => void;
+  onForgotPasswordClick: () => void;
+  onRegisterClick: () => void;
 }
 
-export const Login: React.FC<LoginProps> = ({ 
-  onLoginSuccess, 
-  onRegisterClick, 
-  onForgotPasswordClick,
-  onBack 
-}) => {
+export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onBack, onForgotPasswordClick, onRegisterClick }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
 
+  // Carregar dados do usuário do localStorage se existirem
+  useEffect(() => {
+    try {
+      const savedUserData = localStorage.getItem('javoucar_user_data');
+      if (savedUserData) {
+        const parsedUserData = JSON.parse(savedUserData);
+        setFormData({
+          email: parsedUserData.email || '',
+          password: ''
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do usuário do localStorage:', error);
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
+      // Usar a API service que já tem o fallback para mock
       const result = await api.login(formData.email, formData.password);
       
       if (result.success) {
@@ -52,9 +64,9 @@ export const Login: React.FC<LoginProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 relative">
+    <div className="flex flex-col h-full bg-gray-50 relative auth-form-container">
       {/* Header Image Section */}
-      <div className="h-1/3 w-full relative min-h-[180px]">
+      <div className="w-full relative auth-header">
         <div 
             className="absolute inset-0 bg-cover bg-center"
             style={{
@@ -77,7 +89,7 @@ export const Login: React.FC<LoginProps> = ({
       </div>
 
       {/* Form Section */}
-      <div className="flex-1 bg-white rounded-t-3xl -mt-6 relative z-20 px-4 py-6 overflow-y-auto shadow-inner">
+      <div className="flex-1 bg-white auth-form-content form-content">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 h-full">
             <Input
             label="E-mail"
@@ -102,7 +114,7 @@ export const Login: React.FC<LoginProps> = ({
             />
 
             <div className="mt-auto pt-4 pb-2">
-            <Button type="submit" fullWidth disabled={isLoading} className="py-3">
+            <Button type="submit" fullWidth disabled={isLoading} className="auth-button">
                 {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
             
@@ -110,7 +122,7 @@ export const Login: React.FC<LoginProps> = ({
                 <button 
                 type="button"
                 onClick={onForgotPasswordClick}
-                className="py-3 px-4 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-medium flex items-center justify-center gap-2 transition-colors text-sm"
+                className="py-3 px-4 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-medium flex items-center justify-center gap-2 transition-colors text-sm auth-button"
                 >
                 <ShieldAlert size={16} />
                 Esqueci minha senha
@@ -119,7 +131,7 @@ export const Login: React.FC<LoginProps> = ({
                 <button 
                 type="button"
                 onClick={onRegisterClick}
-                className="py-3 px-4 bg-brand-dark hover:bg-brand-yellow text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-colors text-sm"
+                className="py-3 px-4 bg-brand-dark hover:bg-brand-yellow text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-colors text-sm auth-button"
                 >
                 <UserPlus size={16} />
                 Criar conta

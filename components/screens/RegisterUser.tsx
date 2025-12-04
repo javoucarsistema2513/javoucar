@@ -46,18 +46,20 @@ export const RegisterUser: React.FC<RegisterUserProps> = ({ onNext, onBack, onLo
       return;
     }
     
+    if (formData.password.length < 6) {
+      alert("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+    
     setIsLoading(true);
     try {
-      // Use Supabase service for user registration
-      const result = await supabaseService.signUp(
-        formData.email, 
-        formData.password, 
-        {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone
-        }
-      );
+      // Usar a API service que já tem o fallback para mock
+      const result = await api.registerUser({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password
+      });
       
       if (result.success) {
         // Passar os dados do usuário para o callback
@@ -65,7 +67,7 @@ export const RegisterUser: React.FC<RegisterUserProps> = ({ onNext, onBack, onLo
           name: formData.name, 
           email: formData.email, 
           phone: formData.phone,
-          id: result.data?.user?.id
+          id: 'demo-user-id'
         });
       } else {
         alert("Erro ao registrar usuário. Por favor, tente novamente.");
@@ -83,9 +85,9 @@ export const RegisterUser: React.FC<RegisterUserProps> = ({ onNext, onBack, onLo
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 relative">
+    <div className="flex flex-col h-full bg-gray-50 relative auth-form-container">
       {/* Header Image Section */}
-      <div className="h-1/3 w-full relative min-h-[180px]">
+      <div className="w-full relative auth-header">
         <div 
             className="absolute inset-0 bg-cover bg-center"
             style={{
@@ -109,7 +111,7 @@ export const RegisterUser: React.FC<RegisterUserProps> = ({ onNext, onBack, onLo
       </div>
 
       {/* Form Section */}
-      <div className="flex-1 bg-white rounded-t-3xl -mt-6 relative z-20 px-4 py-6 overflow-y-auto shadow-inner">
+      <div className="flex-1 bg-white auth-form-content form-content">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 h-full">
             <Input
             label="Nome Completo"
@@ -153,6 +155,7 @@ export const RegisterUser: React.FC<RegisterUserProps> = ({ onNext, onBack, onLo
                 value={formData.password}
                 onChange={handleChange}
                 required
+                minLength={6}
                 />
                 
                 <Input
@@ -164,11 +167,12 @@ export const RegisterUser: React.FC<RegisterUserProps> = ({ onNext, onBack, onLo
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                minLength={6}
                 />
             </div>
 
             <div className="mt-auto pt-4 pb-2">
-            <Button type="submit" fullWidth disabled={isLoading} className="py-3">
+            <Button type="submit" fullWidth disabled={isLoading} className="auth-button">
                 {isLoading ? 'Cadastrando...' : 'Cadastrar'}
             </Button>
             

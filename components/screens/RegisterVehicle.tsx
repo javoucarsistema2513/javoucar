@@ -5,7 +5,6 @@ import { Input } from '../Input';
 import { api } from '../../services/api';
 import { VehicleData } from '../../types';
 import { BRAZILIAN_STATES } from '../../constants';
-import { supabaseService } from '../../services/supabaseService';
 
 interface RegisterVehicleProps {
   onNext: (vehicleData: VehicleData) => void;
@@ -20,22 +19,15 @@ export const RegisterVehicle: React.FC<RegisterVehicleProps> = ({ onNext, onBack
     color: '',
     state: 'SP'
   });
-  const [userId, setUserId] = useState<string | null>(null);
 
   // Carregar dados do veículo do localStorage se existirem
   useEffect(() => {
     try {
       const savedVehicleData = localStorage.getItem('javoucar_vehicle_data');
-      const savedUserData = localStorage.getItem('javoucar_user_data');
       
       if (savedVehicleData) {
         const parsedVehicleData = JSON.parse(savedVehicleData);
         setFormData(parsedVehicleData);
-      }
-      
-      if (savedUserData) {
-        const parsedUserData = JSON.parse(savedUserData);
-        setUserId(parsedUserData.id || null);
       }
     } catch (error) {
       console.error('Erro ao carregar dados do veículo do localStorage:', error);
@@ -46,20 +38,14 @@ export const RegisterVehicle: React.FC<RegisterVehicleProps> = ({ onNext, onBack
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Use Supabase service for vehicle registration if user is logged in
-      if (userId) {
-        const result = await supabaseService.registerVehicle(formData, userId);
-        
-        if (result.success) {
-          // Passar os dados do veículo para o callback
-          onNext(formData);
-        } else {
-          alert("Erro ao registrar veículo. Por favor, tente novamente.");
-        }
-      } else {
-        // Fallback to mock implementation if no user ID
-        await api.registerVehicle(formData);
+      // Usar a API service que já tem o fallback para mock
+      const result = await api.registerVehicle(formData);
+      
+      if (result.success) {
+        // Passar os dados do veículo para o callback
         onNext(formData);
+      } else {
+        alert("Erro ao registrar veículo. Por favor, tente novamente.");
       }
     } catch (error) {
       console.error(error);
@@ -78,9 +64,9 @@ export const RegisterVehicle: React.FC<RegisterVehicleProps> = ({ onNext, onBack
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 relative">
+    <div className="flex flex-col h-full bg-gray-50 relative auth-form-container">
       {/* Header Image Section - Sports Car Dashboard */}
-      <div className="h-1/3 w-full relative min-h-[180px]">
+      <div className="w-full relative auth-header">
          <div 
             className="absolute inset-0 bg-cover bg-center"
             style={{
@@ -104,7 +90,7 @@ export const RegisterVehicle: React.FC<RegisterVehicleProps> = ({ onNext, onBack
       </div>
 
       {/* Form Section */}
-      <div className="flex-1 bg-white rounded-t-3xl -mt-6 relative z-20 px-4 py-6 overflow-y-auto shadow-inner">
+      <div className="flex-1 bg-white auth-form-content form-content">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 h-full">
             <Input
             label="Placa do Veículo"
@@ -160,7 +146,7 @@ export const RegisterVehicle: React.FC<RegisterVehicleProps> = ({ onNext, onBack
             </div>
 
             <div className="mt-auto pt-4 pb-2">
-            <Button type="submit" fullWidth disabled={isLoading} className="py-3">
+            <Button type="submit" fullWidth disabled={isLoading} className="auth-button">
                 {isLoading ? 'Cadastrando...' : 'Cadastrar Veículo'}
             </Button>
             </div>

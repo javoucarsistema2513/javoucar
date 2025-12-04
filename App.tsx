@@ -155,9 +155,9 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-0">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-0 app-container">
       {/* Mobile Container Frame - Ajustado para melhor responsividade */}
-      <div className="w-full h-[100dvh] bg-white overflow-hidden relative flex flex-col max-w-md mx-auto">
+      <div className="w-full h-full bg-white overflow-hidden relative flex flex-col max-w-md mx-auto app-container">
         {renderScreen()}
       </div>
     </div>
