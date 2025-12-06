@@ -23,5 +23,10 @@
         }
       ]
     }
-  ]
+  ],
+  "env": {
+    "VITE_SUPABASE_URL": "https://seu-projeto.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "sua_chave_anonima_aqui",
+    "VITE_SOCKET_URL": "https://url-do-seu-servidor-socket-io"
+  }
 }

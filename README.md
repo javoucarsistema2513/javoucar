@@ -1,5 +1,10 @@
 # JávouCar - Sistema de Alerta para Motoristas
 
+## Configuração do Supabase e Implantação
+
+Para configurar corretamente o Supabase, Vercel e o servidor Socket.IO, consulte o guia detalhado:
+[README_SUPABASE_VERCEL.md](README_SUPABASE_VERCEL.md)
+
 ## Configuração do Supabase
 
 Antes de executar o projeto, você precisa configurar o Supabase:
@@ -19,6 +24,7 @@ Para configurar corretamente o Supabase no Vercel:
    ```
    VITE_SUPABASE_URL=https://seu-projeto.supabase.co
    VITE_SUPABASE_ANON_KEY=sua_chave_anonima_aqui
+   VITE_SOCKET_URL=https://url-do-seu-servidor-socket-io
    ```
 
 ### Estrutura do Banco de Dados
@@ -81,7 +87,8 @@ O aplicativo foi otimizado para funcionar bem em dispositivos móveis de todos o
 1. Install dependencies:
    `npm install`
 2. Set the `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Vercel Environment Variables
-3. Run the app:
+3. Set the `VITE_SOCKET_URL` with your deployed Socket.IO server URL
+4. Run the app:
    `npm run dev`
    
 ## Executando o Servidor Socket.IO
@@ -165,6 +172,7 @@ Este erro ocorre quando as variáveis de ambiente do Supabase não estão config
 1. Verifique se você adicionou as variáveis de ambiente no dashboard do Vercel:
    - `VITE_SUPABASE_URL` com a URL completa do seu projeto Supabase (ex: https://seu-projeto.supabase.co)
    - `VITE_SUPABASE_ANON_KEY` com a chave anônima do seu projeto
+   - `VITE_SOCKET_URL` com a URL do seu servidor Socket.IO implantado
 
 2. Certifique-se de que os valores estão corretos e não contêm aspas ou espaços extras
 
@@ -175,12 +183,14 @@ Este erro ocorre quando as variáveis de ambiente do Supabase não estão config
 ### Problemas comuns e soluções:
 
 1. **Aplicativo em branco**: Verifique o console do navegador (F12) para erros
-2. **Erros de CORS**: Certifique-se de que as URLs estão configuradas corretamente no Supabase
+2. **Erros de CORS**: Certifique-se de que as URLs estão configuradas corretamente no Supabase e Socket.IO
 3. **Problemas de autenticação**: Verifique se as chaves do Supabase estão corretas
 4. **Dados não persistindo**: Confirme que o Supabase está configurado e acessível
+5. **Tempo real não funcionando**: Verifique se o servidor Socket.IO está implantado e acessível
 
 Se continuar tendo problemas, verifique:
 - As variáveis de ambiente estão definidas no Vercel
 - Os valores das variáveis estão corretos
 - O projeto foi reconstruído após a adição das variáveis
 - Não há erros de digitação nas URLs
+- O servidor Socket.IO está acessível publicamente

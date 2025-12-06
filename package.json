@@ -7,7 +7,8 @@
     "dev": "vite",
     "dev:backend": "node server/server.js",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:backend": "echo 'Para implantar o backend, use o Render.com ou Railway.app'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",

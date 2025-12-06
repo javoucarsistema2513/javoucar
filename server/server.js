@@ -7,15 +7,35 @@ const cors = require('cors');
 const app = express();
 const server = http.createServer(app);
 
-// Configuração do CORS
-app.use(cors());
+// Configuração do CORS - permitir múltiplas origens
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Permitir origens específicas ou todas em desenvolvimento
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'https://javoucar.vercel.app',
+      // Adicione aqui outras origens do Vercel conforme necessário
+    ];
+    
+    // Em desenvolvimento, permitir todas as origens
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ["GET", "POST"],
+  credentials: false
+};
+
+app.use(cors(corsOptions));
 
 // Configuração do Socket.IO
 const io = socketIo(server, {
-  cors: {
-    origin: "*", // Em produção, especifique a origem exata
-    methods: ["GET", "POST"]
-  }
+  cors: corsOptions,
+  transports: ['websocket', 'polling']
 });
 
 // Armazenamento temporário para salas e usuários (em produção, use um banco de dados)
