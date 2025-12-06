@@ -1,6 +1,6 @@
 import express from 'express';
 import http from 'http';
-import socketIo from 'socket.io';
+import { Server } from 'socket.io';
 import cors from 'cors';
 
 
@@ -34,7 +34,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Configuração do Socket.IO
-const io = socketIo(server, {
+const io = new Server(server, {
   cors: corsOptions,
   transports: ['websocket', 'polling']
 });
@@ -194,7 +194,7 @@ app.get('/', (req, res) => {
 });
 
 // Iniciar o servidor
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3003;
 server.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
