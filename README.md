@@ -5,6 +5,11 @@
 Para configurar corretamente o Supabase, Vercel e o servidor Socket.IO, consulte o guia detalhado:
 [README_SUPABASE_VERCEL.md](README_SUPABASE_VERCEL.md)
 
+## Correção de Erros Comuns
+
+Se você estiver enfrentando erros de conexão WebSocket, consulte o guia:
+[FIX_WEBSOCKET_ERROR.md](FIX_WEBSOCKET_ERROR.md)
+
 ## Configuração do Supabase
 
 Antes de executar o projeto, você precisa configurar o Supabase:
@@ -24,8 +29,10 @@ Para configurar corretamente o Supabase no Vercel:
    ```
    VITE_SUPABASE_URL=https://seu-projeto.supabase.co
    VITE_SUPABASE_ANON_KEY=sua_chave_anonima_aqui
-   VITE_SOCKET_URL=https://url-do-seu-servidor-socket-io
+   VITE_SOCKET_URL=https://SEU-SERVIDOR-SOCKET.render.app
    ```
+   
+**Importante:** Substitua `https://SEU-SERVIDOR-SOCKET.render.app` pela URL real do seu servidor Socket.IO implantado no Render.
 
 ### Estrutura do Banco de Dados
 
