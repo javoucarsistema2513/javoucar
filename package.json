@@ -11,7 +11,7 @@
     "deploy:backend": "echo 'Para implantar o backend, use o Render.com ou Railway.app'"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.86.0",
+    "firebase": "^11.0.1",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "lucide-react": "^0.554.0",

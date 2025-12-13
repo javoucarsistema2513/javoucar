@@ -1,32 +1,20 @@
 import { UserData, VehicleData } from '../types';
-import { supabaseService } from './supabaseService';
-import { supabase } from './supabaseClient';
+import { firestoreService } from './firestoreService';
 
 // Simulate async API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Flag para verificar se o Supabase está configurado
-const isSupabaseConfigured = () => {
-  return supabase !== null;
-};
 
 export const api = {
   login: async (email: string, password: string): Promise<{ success: boolean; data?: any }> => {
     await delay(1000);
     console.log(`Login attempt for: ${email}`);
     
-    // Usar Supabase se estiver configurado, senão usar mock
-    if (isSupabaseConfigured()) {
-      try {
-        const result = await supabaseService.signIn(email, password);
-        return result;
-      } catch (error) {
-        console.error('Supabase login error:', error);
-        // Fallback para mock em caso de erro
-        return { success: true, data: { profile: { name: email.split('@')[0], email, phone: '' } } };
-      }
-    } else {
-      // Mock implementation for demo
+    try {
+      const result = await firestoreService.signIn(email, password);
+      return result;
+    } catch (error) {
+      console.error('Firestore login error:', error);
+      // Fallback para mock em caso de erro
       return { success: true, data: { profile: { name: email.split('@')[0], email, phone: '' } } };
     }
   },
@@ -35,18 +23,12 @@ export const api = {
     await delay(1500);
     console.log(`Recovery email sent to: ${email}`);
     
-    // Usar Supabase se estiver configurado, senão usar mock
-    if (isSupabaseConfigured()) {
-      try {
-        const result = await supabaseService.recoverPassword(email);
-        return { success: result.success };
-      } catch (error) {
-        console.error('Supabase password recovery error:', error);
-        return { success: true }; // Fallback para sucesso
-      }
-    } else {
-      // Mock implementation for demo
-      return { success: true };
+    try {
+      const result = await firestoreService.recoverPassword(email);
+      return { success: result.success };
+    } catch (error) {
+      console.error('Firestore password recovery error:', error);
+      return { success: true }; // Fallback para sucesso
     }
   },
 
@@ -54,18 +36,12 @@ export const api = {
     await delay(1000);
     console.log('User Registered:', data);
     
-    // Usar Supabase se estiver configurado, senão usar mock
-    if (isSupabaseConfigured()) {
-      try {
-        const result = await supabaseService.signUp(data.email, data.password, data);
-        return { success: result.success };
-      } catch (error) {
-        console.error('Supabase user registration error:', error);
-        return { success: true }; // Fallback para sucesso
-      }
-    } else {
-      // Mock implementation for demo
-      return { success: true };
+    try {
+      const result = await firestoreService.signUp(data.email, data.password, data);
+      return { success: result.success };
+    } catch (error) {
+      console.error('Firestore user registration error:', error);
+      return { success: true }; // Fallback para sucesso
     }
   },
 
@@ -73,20 +49,14 @@ export const api = {
     await delay(1000);
     console.log('Vehicle Registered:', data);
     
-    // Usar Supabase se estiver configurado, senão usar mock
-    if (isSupabaseConfigured()) {
-      try {
-        // Para demo, vamos usar um ID de usuário fictício
-        const userId = 'demo-user-id';
-        const result = await supabaseService.registerVehicle(data, userId);
-        return { success: result.success };
-      } catch (error) {
-        console.error('Supabase vehicle registration error:', error);
-        return { success: true }; // Fallback para sucesso
-      }
-    } else {
-      // Mock implementation for demo
-      return { success: true };
+    try {
+      // Para demo, vamos usar um ID de usuário fictício
+      const userId = 'demo-user-id';
+      const result = await firestoreService.registerVehicle(data, userId);
+      return { success: result.success };
+    } catch (error) {
+      console.error('Firestore vehicle registration error:', error);
+      return { success: true }; // Fallback para sucesso
     }
   },
 

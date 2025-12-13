@@ -15,9 +15,13 @@ Certifique-se de ter instalado:
 
 2. Crie um arquivo `.env` na raiz do projeto com o seguinte conteúdo:
    ```env
-   # Supabase Configuration (valores de teste)
-   VITE_SUPABASE_URL=http://localhost:54321
-   VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+   # Firebase Configuration
+   VITE_FIREBASE_API_KEY=your_firebase_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your-project-id
+   VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+   VITE_FIREBASE_MESSAGING_SENDER_ID=1234567890
+   VITE_FIREBASE_APP_ID=1:1234567890:web:abcdef123456
    
    # Socket.IO Server URL
    VITE_SOCKET_URL=http://localhost:3001
@@ -87,11 +91,11 @@ O servidor Socket.IO estará disponível em: http://localhost:3001
 
 ## 6. Verificando Erros Comuns
 
-### Erro: "SUPABASE_ANON_KEY não está configurada corretamente"
+### Erro: "Configuração do Firebase não está correta"
 
 Verifique:
 1. Se o arquivo `.env` existe na raiz do projeto
-2. Se as variáveis estão corretamente nomeadas
+2. Se as variáveis do Firebase estão corretamente nomeadas
 3. Se não há espaços extras ou caracteres especiais
 
 ### Erro: CORS - "No 'Access-Control-Allow-Origin' header"
@@ -179,6 +183,24 @@ supabase.from('users').select('count').then(({ data, error }) => {
 Execute com:
 ```bash
 node test-supabase.js
+```
+
+Seguindo estes passos, você poderá testar toda a funcionalidade do JávouCar localmente antes de implantar em produção.
+
+console.log('Testando conexão com Firebase/Firestore...');
+
+// Tentar acessar uma coleção (não falhará mesmo se estiver vazia)
+getDocs(collection(db, 'users')).then((querySnapshot) => {
+  console.log('Conexão com Firebase/Firestore bem-sucedida');
+  console.log(`Total de documentos na coleção 'users': ${querySnapshot.size}`);
+}).catch((error) => {
+  console.error('Erro ao conectar ao Firebase/Firestore:', error);
+});
+```
+
+Execute com:
+```bash
+node test-firestore.js
 ```
 
 Seguindo estes passos, você poderá testar toda a funcionalidade do JávouCar localmente antes de implantar em produção.
