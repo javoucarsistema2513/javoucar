@@ -3,7 +3,7 @@
 ## Configuração do Supabase e Implantação
 
 Para configurar corretamente o Supabase, Vercel e o servidor Socket.IO, consulte o guia detalhado:
-[README_FIRESTORE_VERCEL.md](README_FIRESTORE_VERCEL.md)
+[README_SUPABASE_VERCEL.md](README_SUPABASE_VERCEL.md)
 
 ## Correção de Erros Comuns
 

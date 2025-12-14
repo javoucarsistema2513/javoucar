@@ -3,7 +3,7 @@ import { User, Mail, Phone, Lock, ArrowLeft, Car } from 'lucide-react';
 import { Button } from '../Button';
 import { Input } from '../Input';
 import { api } from '../../services/api';
-
+import { supabaseService } from '../../services/supabaseService';
 
 interface RegisterUserProps {
   onNext: (userData: any) => void;
