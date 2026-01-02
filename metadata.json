@@ -1,0 +1,8 @@
+{
+  "name": "JávouCar",
+  "description": "Sistema moderno de gerenciamento de alertas veiculares para avisar proprietários sobre situações urgentes como luzes acesas, bloqueio de saída ou janelas abertas.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
