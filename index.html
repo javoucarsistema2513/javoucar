@@ -15,9 +15,9 @@
     <meta name="apple-mobile-web-app-title" content="JávouCar">
     
     <!-- Icons and Splash Screens -->
-    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=192">
-    <link rel="icon" type="image/png" sizes="32x32" href="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=32">
-    <link rel="icon" type="image/png" sizes="16x16" href="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=16">
+    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=180&h=180">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=192&h=192">
+    <link rel="shortcut icon" href="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=192&h=192">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -31,13 +31,15 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-            overscroll-behavior-y: none; /* Desativa pull-to-refresh */
+            background-color: #030712;
+            overscroll-behavior-y: none;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
             height: 100dvh;
             width: 100vw;
             overflow: hidden;
+            margin: 0;
+            padding: 0;
         }
 
         #root {
@@ -46,11 +48,9 @@
             flex-direction: column;
         }
 
-        /* Ajustes de Safe Area */
-        .pt-safe { padding-top: var(--sat); }
-        .pb-safe { padding-bottom: var(--sab); }
-        .mb-safe { margin-bottom: var(--sab); }
-
+        .pt-safe { padding-top: max(1rem, var(--sat)); }
+        .pb-safe { padding-bottom: max(1rem, var(--sab)); }
+        
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -62,9 +62,8 @@
             animation: fadeIn 0.3s ease-out forwards;
         }
 
-        /* Impede zoom em inputs no iOS */
         input, select, textarea {
-            font-size: 16px !important;
+            font-size: 16px !important; /* Impede zoom no iOS */
         }
     </style>
 <script type="importmap">
@@ -80,7 +79,7 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body class="bg-gray-50 text-gray-900">
+<body class="text-gray-900">
     <div id="root"></div>
 <script type="module" src="/index.tsx"></script>
 </body>

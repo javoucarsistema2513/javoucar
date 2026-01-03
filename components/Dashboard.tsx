@@ -24,10 +24,11 @@ interface AlertPayload {
   created_at: string;
 }
 
-const withTimeout = (promise: Promise<any>, ms: number = 8000) => {
+// Timeout aumentado para 15 segundos para redes móveis lentas
+const withTimeout = (promise: Promise<any>, ms: number = 15000) => {
   return Promise.race([
     promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo de resposta excedido')), ms))
+    new Promise((_, reject) => setTimeout(() => reject(new Error('A conexão demorou muito. Verifique sua rede.')), ms))
   ]);
 };
 
@@ -198,13 +199,10 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
     const handleOrientation = (e: any) => {
       let heading = 0;
       if (e.webkitCompassHeading) {
-        // iOS
         heading = e.webkitCompassHeading;
       } else if (e.absolute && e.alpha !== null) {
-        // Android Absolute
         heading = 360 - e.alpha;
       } else {
-        // Fallback relative (menos preciso)
         heading = 360 - (e.alpha || 0);
       }
       setDeviceHeading(heading);
@@ -267,7 +265,6 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
       return;
     }
     
-    // Alerta se a precisão estiver muito ruim (> 30 metros)
     if (currentPos.accuracy > 30) {
       if (!confirm(`Sinal de GPS fraco (${Math.round(currentPos.accuracy)}m). Deseja salvar assim mesmo?`)) return;
     }
@@ -309,39 +306,67 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
   const handleSendAlert = async (messageText: string) => {
     if (!messageText.trim() || sending) return;
     initAudio();
-    const plateToSearch = normalizePlate(targetPlate);
+    
+    // Normalização agressiva da placa para busca
+    const plateToSearch = normalizePlate(targetPlate).trim();
     if (!plateToSearch || plateToSearch.length < 7) { 
       setErrorMsg('Placa inválida'); 
       return; 
     }
+    
     setSending(true); 
     setErrorMsg('');
+    
     try {
-      const { data: targetVeh } = await withTimeout(supabase.from('vehicles').select('plate').eq('plate', plateToSearch).maybeSingle());
+      // Busca global independente de quem enviou
+      const { data: targetVeh, error: fetchErr } = await withTimeout(
+        supabase
+          .from('vehicles')
+          .select('plate')
+          .eq('plate', plateToSearch)
+          .maybeSingle()
+      );
+
+      if (fetchErr) throw fetchErr;
+
       if (!targetVeh) {
-        setErrorMsg('Veículo não cadastrado');
+        setErrorMsg('Veículo não cadastrado no JávouCar');
         setSending(false);
         return;
       }
+
       const alertIcon = PRECONFIGURED_ALERTS.find(a => a.text === messageText)?.icon || 'bell';
-      const { data: insertedData, error: insErr } = await withTimeout(supabase.from('alerts').insert({
-        target_plate: targetVeh.plate,
-        sender_name: user?.fullName || 'Motorista',
-        message: messageText,
-        icon: alertIcon
-      }).select().single());
+      
+      const { data: insertedData, error: insErr } = await withTimeout(
+        supabase.from('alerts').insert({
+          target_plate: targetVeh.plate,
+          sender_name: user?.fullName || 'Motorista',
+          message: messageText,
+          icon: alertIcon
+        }).select().single()
+      );
+
       if (insErr) throw insErr;
+
+      // Se o alerta for para si mesmo, ativa o alarme local
       if (normalizePlate(vehicle?.plate || '') === plateToSearch) {
         setActiveAlert(insertedData as AlertPayload);
         setShowReceivedModal(true);
         startAlarm();
       }
-      setTargetPlate(''); setCustomMessage(''); 
+
+      setTargetPlate(''); 
+      setCustomMessage(''); 
       playConfirmationBeeps();
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
+      
       cleanupOldAlerts(targetVeh.plate);
-    } catch (err) { setErrorMsg("Erro de conexão."); } finally { setSending(false); }
+    } catch (err: any) { 
+      setErrorMsg(err.message || "Erro de conexão. Tente novamente."); 
+    } finally { 
+      setSending(false); 
+    }
   };
 
   const cleanupOldAlerts = async (plate: string) => {
@@ -377,7 +402,7 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
 
       {showSuccessToast && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-green-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center space-x-2 animate-in slide-in-from-top duration-300 font-bold text-sm">
-          <CheckCircle2 size={18} /> <span>Alerta enviado!</span>
+          <CheckCircle2 size={18} /> <span>Alerta enviado com sucesso!</span>
         </div>
       )}
 
@@ -407,12 +432,12 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
       <div className="px-5 pt-6 shrink-0">
         <div className="p-4 bg-white rounded-3xl border border-gray-100 shadow-sm">
           <label className="text-[10px] font-black uppercase text-gray-400 mb-1.5 ml-1 block">Avisar Motorista:</label>
-          <div className="relative">
-            <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <div className="relative group">
+            <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500" />
             <input
-              type="text" placeholder="PLACA DO CARRO"
-              className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 uppercase font-black text-lg tracking-widest"
-              value={targetPlate} onChange={e => { setErrorMsg(''); setTargetPlate(e.target.value.toUpperCase()); }} maxLength={8}
+              type="text" placeholder="PLACA DO VEÍCULO"
+              className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 uppercase font-black text-lg tracking-widest outline-none"
+              value={targetPlate} onChange={e => { setErrorMsg(''); setTargetPlate(e.target.value.toUpperCase()); }} maxLength={7}
               disabled={sending}
             />
           </div>
@@ -430,9 +455,9 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
             </button>
           ))}
         </div>
-        <textarea className="w-full p-4 bg-white border border-gray-100 rounded-3xl h-20 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-xs resize-none shadow-sm mb-3 disabled:opacity-50" placeholder="Mensagem personalizada..." disabled={sending} value={customMessage} onChange={e => setCustomMessage(e.target.value)} />
+        <textarea className="w-full p-4 bg-white border border-gray-100 rounded-3xl h-20 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-xs resize-none shadow-sm mb-3 disabled:opacity-50" placeholder="Ou digite sua mensagem personalizada aqui..." disabled={sending} value={customMessage} onChange={e => setCustomMessage(e.target.value)} />
         <button onClick={() => handleSendAlert(customMessage)} disabled={sending || !customMessage.trim()} className="w-full py-4.5 bg-blue-600 text-white font-black rounded-2xl flex items-center justify-center space-x-3 shadow-xl uppercase text-xs active:scale-[0.97] transition-all disabled:bg-blue-400">
-          {sending ? <Loader2 className="animate-spin w-4 h-4" /> : <Send size={18} />} <span>{sending ? 'Enviando...' : 'Avisar Agora'}</span>
+          {sending ? <Loader2 className="animate-spin w-4 h-4" /> : <Send size={18} />} <span>{sending ? 'Localizando Veículo...' : 'Enviar Alerta Agora'}</span>
         </button>
       </div>
 
@@ -449,7 +474,7 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
         </button>
       </div>
 
-      {/* MODAL VAGA - REFINADO */}
+      {/* Modal Vaga */}
       {showParkingModal && (
         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-[200] flex items-end" onClick={() => setShowParkingModal(false)}>
           <div className="bg-white w-full rounded-t-[3rem] p-6 pb-[calc(2.5rem+var(--sab))] animate-in slide-in-from-bottom duration-300" onClick={(e) => e.stopPropagation()}>
@@ -461,39 +486,22 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
                       <span className="text-[9px] font-black text-gray-400 uppercase">GPS: {currentPos ? `${Math.round(currentPos.accuracy)}m de precisão` : 'Aguardando sinal...'}</span>
                    </div>
                 </div>
-                <button onClick={() => setShowParkingModal(false)} className="bg-gray-100 p-2 rounded-full text-gray-400"><XCircle size={28} /></button>
+                <button onClick={() => setShowParkingModal(false)} className="bg-gray-100 p-2 rounded-full text-gray-400 active:scale-90"><XCircle size={28} /></button>
              </div>
 
              <div className="grid grid-cols-2 gap-4 mb-6">
-                {/* Radar da Bússola */}
                 <div className="bg-blue-50 rounded-[2.5rem] p-4 flex flex-col items-center justify-center border-2 border-blue-100 shadow-inner overflow-hidden relative group">
-                   <div className="absolute inset-0 bg-gradient-to-br from-blue-100/30 to-transparent pointer-events-none" />
-                   
-                   {/* Mostrador de Bússola */}
                    <div className="relative w-24 h-24 flex items-center justify-center">
-                      {/* Círculos concêntricos de radar */}
                       <div className="absolute inset-0 border border-blue-200/50 rounded-full scale-100" />
-                      <div className="absolute inset-2 border border-blue-200/50 rounded-full scale-100" />
-                      
-                      {/* Seta de Direção */}
-                      <div 
-                        style={{ transform: `rotate(${arrowRotation}deg)` }} 
-                        className="transition-transform duration-200 ease-out z-10"
-                      >
-                         <Navigation size={48} className="text-blue-600 fill-blue-600 drop-shadow-[0_0_15px_rgba(37,99,235,0.4)]" />
+                      <div style={{ transform: `rotate(${arrowRotation}deg)` }} className="transition-transform duration-200 ease-out z-10">
+                         <Navigation size={48} className="text-blue-600 fill-blue-600 drop-shadow-lg" />
                       </div>
-                      
-                      {/* Marcador de Norte (opcional para calibração) */}
-                      <div 
-                        style={{ transform: `rotate(${-deviceHeading}deg)` }} 
-                        className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 transition-transform duration-200"
-                      >
+                      <div style={{ transform: `rotate(${-deviceHeading}deg)` }} className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1">
                         <span className="text-[10px] font-black text-red-500">N</span>
                       </div>
                    </div>
-
                    <div className="mt-4 text-center">
-                      <p className="text-2xl font-black text-blue-600 tracking-tighter leading-none">
+                      <p className="text-2xl font-black text-blue-600 tracking-tighter">
                          {currentPos && parkedLocation ? calculateDistance(currentPos.lat, currentPos.lng, parkedLocation.lat, parkedLocation.lng) : '---'}
                       </p>
                       <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mt-1">Distância</p>
@@ -523,33 +531,29 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
                   <MapPin size={20} /> <span>Marcar Vaga Atual</span>
                </button>
                <div className="grid grid-cols-2 gap-3">
-                 <button onClick={handleOpenMaps} className="py-4 bg-gray-50 text-gray-700 font-bold rounded-2xl uppercase text-[10px] flex items-center justify-center space-x-2 border active:bg-gray-100">
-                    <MapIcon size={16} className="text-blue-500" /> <span>Direções</span>
+                 <button onClick={handleOpenMaps} className="py-4 bg-gray-50 text-gray-700 font-bold rounded-2xl uppercase text-[10px] flex items-center justify-center space-x-2 border active:bg-gray-100 transition-colors">
+                    <MapIcon size={16} className="text-blue-500" /> <span>Google Maps</span>
                  </button>
-                 <button onClick={handleShareLocation} disabled={sharing} className="py-4 bg-blue-50 text-blue-700 font-bold rounded-2xl uppercase text-[10px] flex items-center justify-center space-x-2 border active:bg-blue-100 disabled:opacity-50">
+                 <button onClick={handleShareLocation} disabled={sharing} className="py-4 bg-blue-50 text-blue-700 font-bold rounded-2xl uppercase text-[10px] flex items-center justify-center space-x-2 border active:bg-blue-100 transition-colors disabled:opacity-50">
                     <Share2 size={16} /> <span>Compartilhar</span>
                  </button>
                </div>
-               {!orientationPermission && (
-                  <p className="text-[8px] text-center text-gray-400 font-bold uppercase mt-2">
-                     * Calibre os sensores do celular girando em "8" para melhor precisão
-                  </p>
-               )}
              </div>
           </div>
         </div>
       )}
 
+      {/* Histórico */}
       {showHistory && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-end" onClick={() => setShowHistory(false)}>
           <div className="bg-white w-full rounded-t-[2.5rem] p-6 pb-[calc(2rem+var(--sab))] animate-in slide-in-from-bottom duration-300" onClick={(e) => e.stopPropagation()}>
              <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-black uppercase italic text-gray-800">Alertas Recentes</h3>
-                <button onClick={() => setShowHistory(false)} className="text-gray-300"><XCircle size={24} /></button>
+                <button onClick={() => setShowHistory(false)} className="text-gray-300 active:scale-90"><XCircle size={24} /></button>
              </div>
              <div className="space-y-2.5 pb-4 max-h-[40vh] overflow-y-auto no-scrollbar">
                {alertHistory.length === 0 ? (
-                 <p className="text-center py-8 text-gray-400 font-bold uppercase text-[10px]">Nenhum alerta</p>
+                 <p className="text-center py-8 text-gray-400 font-bold uppercase text-[10px]">Nenhum alerta recebido</p>
                ) : (
                  alertHistory.map(a => (
                    <div key={a.id} className="p-3.5 bg-gray-50 rounded-2xl border flex items-center space-x-3">
@@ -566,15 +570,15 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
         </div>
       )}
 
+      {/* Alerta Recebido */}
       {showReceivedModal && activeAlert && (
         <div className="absolute inset-0 bg-gray-950/70 backdrop-blur-lg z-[999] flex items-center justify-center p-4 animate-in fade-in duration-300" onClick={() => { stopAlarm(); setShowReceivedModal(false); }}>
            <div className="bg-white w-full max-w-[310px] rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 border border-white/20" onClick={e => e.stopPropagation()}>
-              <div className="bg-blue-600 p-6 flex flex-col items-center relative overflow-hidden">
-                 <div className="absolute -top-10 -right-10 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-                 <div className="bg-white p-3.5 rounded-2xl mb-3 animate-bounce shadow-xl z-10">
+              <div className="bg-blue-600 p-6 flex flex-col items-center relative overflow-hidden text-center">
+                 <div className="bg-white p-3.5 rounded-2xl mb-3 animate-bounce shadow-xl">
                     {renderIcon(activeAlert.icon, "w-10 h-10")}
                  </div>
-                 <h2 className="text-white text-xl font-black uppercase italic tracking-tighter z-10">Novo Alerta!</h2>
+                 <h2 className="text-white text-xl font-black uppercase italic tracking-tighter">Novo Alerta!</h2>
               </div>
               <div className="p-6 space-y-4 text-center">
                  <div className="bg-gray-50 p-3.5 rounded-[1.5rem] border border-gray-100">
@@ -582,7 +586,6 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
                     <div className="flex flex-col items-center">
                        <span className="text-gray-900 font-black text-base uppercase leading-none mb-0.5">{vehicle?.model}</span>
                        <span className="text-blue-600 font-mono font-black text-lg tracking-widest">{vehicle?.plate}</span>
-                       <span className="text-gray-400 font-bold text-[9px] uppercase mt-0.5">{vehicle?.color}</span>
                     </div>
                  </div>
                  <div className="bg-yellow-50 p-4 rounded-[1.5rem] border border-yellow-100">
@@ -597,17 +600,6 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
            </div>
         </div>
       )}
-      
-      <style>{`
-        @keyframes radar-pulse {
-          0% { transform: scale(1); opacity: 0.5; }
-          100% { transform: scale(1.5); opacity: 0; }
-        }
-        .radar-effect::before {
-          content: ''; position: absolute; inset: 0; border: 2px solid #2563eb; border-radius: 9999px;
-          animation: radar-pulse 2s infinite; pointer-events: none;
-        }
-      `}</style>
     </div>
   );
 };
