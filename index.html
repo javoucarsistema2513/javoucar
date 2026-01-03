@@ -48,22 +48,26 @@
             flex-direction: column;
         }
 
-        .pt-safe { padding-top: max(1rem, var(--sat)); }
-        .pb-safe { padding-bottom: max(1rem, var(--sab)); }
+        .pt-safe { padding-top: max(0.5rem, var(--sat)); }
+        .pb-safe { padding-bottom: max(0.5rem, var(--sab)); }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.98); }
+            from { opacity: 0; transform: scale(0.99); }
             to { opacity: 1; transform: scale(1); }
         }
         .animate-app {
-            animation: fadeIn 0.3s ease-out forwards;
+            animation: fadeIn 0.25s ease-out forwards;
         }
 
         input, select, textarea {
-            font-size: 16px !important; /* Impede zoom no iOS */
+            font-size: 16px !important; /* Essencial para evitar zoom no iOS */
+        }
+
+        @media screen and (max-height: 550px) {
+            .hide-on-short-screen { display: none !important; }
         }
     </style>
 <script type="importmap">

@@ -28,6 +28,8 @@ export interface AlertMessage {
   id: string;
   text: string;
   icon: string;
+  color: string;
+  bgColor: string;
 }
 
 export const BRAZILIAN_STATES = [
@@ -37,13 +39,13 @@ export const BRAZILIAN_STATES = [
 ];
 
 export const PRECONFIGURED_ALERTS: AlertMessage[] = [
-  { id: '1', text: 'Preciso sair com urgência!', icon: 'zap' },
-  { id: '2', text: 'Seu carro está bloqueando a saída', icon: 'door-closed' },
-  { id: '3', text: 'Farol aceso!', icon: 'sun' },
-  { id: '4', text: 'Porta malas aberto!', icon: 'package' },
-  { id: '5', text: 'Alarme acionado!', icon: 'bell' },
-  { id: '6', text: 'Pneu murcho', icon: 'disc' },
-  { id: '7', text: 'Janela aberta!', icon: 'minimize-2' }
+  { id: '1', text: 'Preciso sair com urgência!', icon: 'zap', color: 'text-amber-500', bgColor: 'bg-amber-50' },
+  { id: '2', text: 'Seu carro está bloqueando a saída', icon: 'door-closed', color: 'text-red-500', bgColor: 'bg-red-50' },
+  { id: '3', text: 'Farol aceso!', icon: 'sun', color: 'text-yellow-500', bgColor: 'bg-yellow-50' },
+  { id: '4', text: 'Porta malas aberto!', icon: 'package', color: 'text-orange-600', bgColor: 'bg-orange-50' },
+  { id: '5', text: 'Alarme acionado!', icon: 'bell', color: 'text-rose-600', bgColor: 'bg-rose-50' },
+  { id: '6', text: 'Pneu murcho', icon: 'disc', color: 'text-slate-600', bgColor: 'bg-slate-50' },
+  { id: '7', text: 'Janela aberta!', icon: 'minimize-2', color: 'text-cyan-500', bgColor: 'bg-cyan-50' }
 ];
 
 export const CAR_IMAGE_URL = "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=800";

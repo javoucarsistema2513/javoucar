@@ -42,34 +42,34 @@ const Signup: React.FC<SignupProps> = ({ onSubmit, onBack }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white p-6">
-      <div className="flex items-center mb-0">
+    <div className="flex flex-col h-full bg-white p-5">
+      <div className="flex items-center mb-1">
         <button onClick={onBack} className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors">
-          <ArrowLeft className="w-6 h-6 text-gray-700" />
+          <ArrowLeft className="w-5 h-5 text-gray-700" />
         </button>
       </div>
 
-      <div className="text-center mb-6">
+      <div className="text-center mb-5">
         <h1 
-          className="text-4xl font-black text-gray-900 tracking-tighter italic"
-          style={{ textShadow: '0 6px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05)' }}
+          className="text-3xl font-black text-gray-900 tracking-tighter italic"
+          style={{ textShadow: '0 4px 8px rgba(0,0,0,0.08)' }}
         >
           Jávou<span className="text-yellow-400">Car</span>
         </h1>
-        <h2 className="text-base font-bold text-gray-400 mt-0.5 uppercase tracking-widest">Crie sua conta</h2>
+        <h2 className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-[0.2em]">Crie sua conta</h2>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4 flex-grow overflow-y-auto no-scrollbar pb-6">
+      <form onSubmit={handleSubmit} className="space-y-3.5 flex-grow overflow-y-auto no-scrollbar pb-6">
         <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-400 uppercase ml-1">Nome Completo</label>
+          <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Nome Completo</label>
           <div className="relative">
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               required
               disabled={loading}
               type="text"
               placeholder="João da Silva"
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50"
+              className="w-full pl-11 pr-4 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50 text-sm"
               value={formData.fullName}
               onChange={e => setFormData({...formData, fullName: e.target.value})}
             />
@@ -77,15 +77,15 @@ const Signup: React.FC<SignupProps> = ({ onSubmit, onBack }) => {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-400 uppercase ml-1">E-mail</label>
+          <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">E-mail</label>
           <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               required
               disabled={loading}
               type="email"
               placeholder="seu@email.com"
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50"
+              className="w-full pl-11 pr-4 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50 text-sm"
               value={formData.email}
               onChange={e => setFormData({...formData, email: e.target.value})}
             />
@@ -93,59 +93,41 @@ const Signup: React.FC<SignupProps> = ({ onSubmit, onBack }) => {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-bold text-gray-400 uppercase ml-1">Telefone</label>
+          <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Telefone</label>
           <div className="relative">
-            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               required
               disabled={loading}
               type="tel"
               placeholder="(11) 99999-9999"
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50"
+              className="w-full pl-11 pr-4 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50 text-sm"
               value={formData.phone}
               onChange={e => setFormData({...formData, phone: e.target.value})}
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Senha</label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                required
-                disabled={loading}
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                className="w-full pl-12 pr-12 py-4 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50"
-                value={formData.password}
-                onChange={e => setFormData({...formData, password: e.target.value})}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 p-2"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Confirmar Senha</label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                required
-                disabled={loading}
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50"
-                value={formData.confirmPassword}
-                onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
-              />
-            </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Senha</label>
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              required
+              disabled={loading}
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              className="w-full pl-11 pr-11 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50 text-sm"
+              value={formData.password}
+              onChange={e => setFormData({...formData, password: e.target.value})}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 p-2"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
         </div>
 
@@ -153,10 +135,10 @@ const Signup: React.FC<SignupProps> = ({ onSubmit, onBack }) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-xl transition-all active:scale-[0.98] uppercase tracking-widest text-sm flex items-center justify-center space-x-2"
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-lg transition-all active:scale-[0.98] uppercase tracking-widest text-xs flex items-center justify-center space-x-2"
           >
-            {loading ? <Loader2 className="animate-spin w-5 h-5" /> : null}
-            <span>{loading ? 'Criando Conta...' : 'Cadastrar Agora'}</span>
+            {loading ? <Loader2 className="animate-spin w-4 h-4" /> : null}
+            <span>{loading ? 'Criando...' : 'Cadastrar'}</span>
           </button>
         </div>
       </form>
