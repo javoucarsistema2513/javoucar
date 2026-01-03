@@ -25,11 +25,16 @@ const App: React.FC = () => {
       };
       setUserData(user);
 
-      const { data: vehicle, error } = await supabase
+      // Busca veículo com tempo limite
+      const fetchPromise = supabase
         .from('vehicles')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
+
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000));
+      
+      const { data: vehicle, error }: any = await Promise.race([fetchPromise, timeoutPromise]).catch(() => ({ data: null, error: null }));
 
       if (error) throw error;
 
@@ -41,8 +46,7 @@ const App: React.FC = () => {
         setCurrentScreen(AppScreen.VEHICLE_REGISTRATION);
       }
     } catch (err) {
-      console.error("Erro ao processar dados do usuário/veículo:", err);
-      // Em caso de erro, permitimos que o usuário tente registrar o veículo novamente
+      console.error("Erro ao processar dados:", err);
       setCurrentScreen(AppScreen.VEHICLE_REGISTRATION);
     } finally {
       setLoading(false);
@@ -50,14 +54,12 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Timeout de segurança: Se em 8 segundos nada acontecer, libera a tela
+    // Timeout de segurança reduzido para 4 segundos para evitar tela branca longa
     const safetyTimeout = setTimeout(() => {
-      setLoading(false);
-    }, 8000);
+      if (loading) setLoading(false);
+    }, 4000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth Event:", event);
-      
       if (event === 'SIGNED_OUT') {
         setUserData(null);
         setVehicleData(null);
@@ -67,10 +69,8 @@ const App: React.FC = () => {
         setCurrentScreen(AppScreen.RESET_PASSWORD);
         setLoading(false);
       } else if (session?.user) {
-        // Captura SIGNED_IN, INITIAL_SESSION, USER_UPDATED
         await fetchVehicleAndNavigate(session.user.id, session.user.user_metadata);
       } else {
-        // Nenhuma sessão ativa
         setLoading(false);
       }
     });
@@ -79,7 +79,7 @@ const App: React.FC = () => {
       clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
-  }, [fetchVehicleAndNavigate]);
+  }, [fetchVehicleAndNavigate, loading]);
 
   const handleUserSignup = async (data: UserData) => {
     setLoading(true);
@@ -88,24 +88,20 @@ const App: React.FC = () => {
         email: data.email,
         password: data.password!,
         options: {
-          data: {
-            full_name: data.fullName,
-            phone: data.phone
-          }
+          data: { full_name: data.fullName, phone: data.phone }
         }
       });
 
       if (error) throw error;
       
       if (authData.user && !authData.session) {
-        alert("Cadastro realizado! Por favor, verifique seu e-mail para confirmar a conta.");
+        alert("Verifique seu e-mail!");
         setCurrentScreen(AppScreen.LOGIN);
-        setLoading(false);
       }
-      // Se houver sessão (e-mail automático confirmado), o onAuthStateChange cuidará do resto
     } catch (error: any) {
-      setLoading(false);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -117,10 +113,11 @@ const App: React.FC = () => {
         password: data.password!
       });
       if (error) throw error;
-      // O onAuthStateChange cuidará do redirecionamento
     } catch (error: any) {
-      setLoading(false);
       throw error;
+    } finally {
+      // O redirecionamento acontece via onAuthStateChange, mas garantimos que o loader sai se houver erro
+      setTimeout(() => setLoading(false), 3000); 
     }
   };
 
@@ -128,7 +125,7 @@ const App: React.FC = () => {
     setLoading(true);
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) throw new Error("Usuário não autenticado");
+      if (!authUser) throw new Error("Não autenticado");
 
       const { error } = await supabase
         .from('vehicles')
@@ -145,7 +142,7 @@ const App: React.FC = () => {
       setVehicleData(data);
       setCurrentScreen(AppScreen.DASHBOARD);
     } catch (error: any) {
-      alert("Erro ao salvar veículo: " + error.message);
+      alert("Erro ao salvar: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -159,14 +156,9 @@ const App: React.FC = () => {
     return (
       <div className="h-[100dvh] w-full bg-blue-600 flex items-center justify-center">
         <div className="text-white text-center">
-          <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <h1 
-            className="text-2xl font-black italic"
-            style={{ textShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-          >
-            Jávou<span className="text-yellow-400">Car</span>
-          </h1>
-          <p className="text-blue-100 text-[10px] font-bold uppercase tracking-widest mt-2 animate-pulse">Sincronizando Garagem...</p>
+          <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+          <h1 className="text-xl font-black italic">Jávou<span className="text-yellow-400">Car</span></h1>
+          <p className="text-blue-100 text-[9px] font-bold uppercase tracking-widest mt-2">Conectando...</p>
         </div>
       </div>
     );
