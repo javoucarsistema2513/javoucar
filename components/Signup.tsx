@@ -22,7 +22,12 @@ const Signup: React.FC<SignupProps> = ({ onSubmit, onBack }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      alert("Senhas não conferem!");
+      alert("As senhas não coincidem!");
+      return;
+    }
+    
+    if (formData.password.length < 6) {
+      alert("A senha deve ter pelo menos 6 caracteres.");
       return;
     }
     
@@ -128,6 +133,22 @@ const Signup: React.FC<SignupProps> = ({ onSubmit, onBack }) => {
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Confirmar Senha</label>
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              required
+              disabled={loading}
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              className="w-full pl-11 pr-4 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50 text-sm"
+              value={formData.confirmPassword}
+              onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+            />
           </div>
         </div>
 

@@ -1,6 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-// Added normalizePlate to the imports from ./types
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppScreen, UserData, VehicleData, normalizePlate } from './types';
 import { supabase } from './supabase';
 import Onboarding from './components/Onboarding';
@@ -16,6 +15,7 @@ const App: React.FC = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [vehicleData, setVehicleData] = useState<VehicleData | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialCheckPerformed = useRef(false);
 
   const fetchVehicleAndNavigate = useCallback(async (userId: string, userMeta: any) => {
     try {
@@ -26,20 +26,13 @@ const App: React.FC = () => {
       };
       setUserData(user);
 
-      // Busca veículo com tempo limite aumentado para redes móveis instáveis
-      const fetchPromise = supabase
+      const { data: vehicle, error }: any = await supabase
         .from('vehicles')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
 
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000));
-      
-      const { data: vehicle, error }: any = await Promise.race([fetchPromise, timeoutPromise]).catch(() => ({ data: null, error: null }));
-
-      if (error) {
-        console.error("Erro Supabase:", error);
-      }
+      if (error) console.error("Erro ao buscar veículo:", error);
 
       if (vehicle) {
         setVehicleData(vehicle);
@@ -49,30 +42,39 @@ const App: React.FC = () => {
         setCurrentScreen(AppScreen.VEHICLE_REGISTRATION);
       }
     } catch (err) {
-      console.error("Erro ao processar dados:", err);
+      console.error("Erro ao processar dados de login:", err);
       setCurrentScreen(AppScreen.VEHICLE_REGISTRATION);
     } finally {
-      // Garantir que o loading só saia após termos uma definição clara de tela
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // Escuta mudanças de autenticação - Supabase gerencia a persistência no localStorage automaticamente
+    // 1. Verificação imediata de sessão existente ao abrir o app
+    const checkInitialSession = async () => {
+      if (initialCheckPerformed.current) return;
+      initialCheckPerformed.current = true;
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await fetchVehicleAndNavigate(session.user.id, session.user.user_metadata);
+      } else {
+        setLoading(false);
+      }
+    };
+
+    checkInitialSession();
+
+    // 2. Ouvinte de mudanças de estado (Login/Logout/Token Refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session?.user) {
           await fetchVehicleAndNavigate(session.user.id, session.user.user_metadata);
-        } else {
-          setLoading(false);
         }
       } else if (event === 'SIGNED_OUT') {
         setUserData(null);
         setVehicleData(null);
         setCurrentScreen(AppScreen.ONBOARDING);
-        setLoading(false);
-      } else if (event === 'PASSWORD_RECOVERY') {
-        setCurrentScreen(AppScreen.RESET_PASSWORD);
         setLoading(false);
       }
     });
@@ -92,9 +94,7 @@ const App: React.FC = () => {
           data: { full_name: data.fullName, phone: data.phone }
         }
       });
-
       if (error) throw error;
-      
       if (authData.user && !authData.session) {
         alert("Verifique seu e-mail para confirmar o cadastro!");
         setCurrentScreen(AppScreen.LOGIN);
@@ -117,9 +117,8 @@ const App: React.FC = () => {
       if (error) throw error;
     } catch (error: any) {
       alert(error.message || "E-mail ou senha incorretos.");
+      setLoading(false);
       throw error;
-    } finally {
-      // O onAuthStateChange cuidará do redirecionamento
     }
   };
 
@@ -129,7 +128,6 @@ const App: React.FC = () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) throw new Error("Não autenticado");
 
-      // Salva de forma a garantir que a busca global funcione
       const { error } = await supabase
         .from('vehicles')
         .upsert({
@@ -141,7 +139,6 @@ const App: React.FC = () => {
         });
 
       if (error) throw error;
-
       setVehicleData(data);
       setCurrentScreen(AppScreen.DASHBOARD);
     } catch (error: any) {
@@ -151,17 +148,13 @@ const App: React.FC = () => {
     }
   };
 
-  const navigateTo = (screen: AppScreen) => {
-    setCurrentScreen(screen);
-  };
-
   if (loading) {
     return (
       <div className="h-[100dvh] w-full bg-blue-600 flex items-center justify-center">
         <div className="text-white text-center">
           <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-6"></div>
           <h1 className="text-2xl font-black italic tracking-tighter">Jávou<span className="text-yellow-400">Car</span></h1>
-          <p className="text-blue-100 text-[10px] font-black uppercase tracking-[0.3em] mt-3 animate-pulse">Sincronizando...</p>
+          <p className="text-blue-100 text-[10px] font-black uppercase tracking-[0.3em] mt-3 animate-pulse">Autenticando...</p>
         </div>
       </div>
     );
@@ -170,26 +163,26 @@ const App: React.FC = () => {
   const renderScreen = () => {
     switch (currentScreen) {
       case AppScreen.ONBOARDING:
-        return <Onboarding onStart={() => navigateTo(AppScreen.SIGNUP)} onLogin={() => navigateTo(AppScreen.LOGIN)} />;
+        return <Onboarding onStart={() => setCurrentScreen(AppScreen.SIGNUP)} onLogin={() => setCurrentScreen(AppScreen.LOGIN)} />;
       case AppScreen.SIGNUP:
-        return <Signup onSubmit={handleUserSignup} onBack={() => navigateTo(AppScreen.ONBOARDING)} />;
+        return <Signup onSubmit={handleUserSignup} onBack={() => setCurrentScreen(AppScreen.ONBOARDING)} />;
       case AppScreen.LOGIN:
         return <Login 
           onLogin={handleLogin} 
-          onBack={() => navigateTo(AppScreen.ONBOARDING)} 
-          onGoToSignup={() => navigateTo(AppScreen.SIGNUP)}
-          onForgotPassword={() => navigateTo(AppScreen.FORGOT_PASSWORD)} 
+          onBack={() => setCurrentScreen(AppScreen.ONBOARDING)} 
+          onGoToSignup={() => setCurrentScreen(AppScreen.SIGNUP)}
+          onForgotPassword={() => setCurrentScreen(AppScreen.FORGOT_PASSWORD)} 
         />;
       case AppScreen.FORGOT_PASSWORD:
-        return <ForgotPassword onBack={() => navigateTo(AppScreen.LOGIN)} />;
+        return <ForgotPassword onBack={() => setCurrentScreen(AppScreen.LOGIN)} />;
       case AppScreen.RESET_PASSWORD:
-        return <ResetPassword onComplete={() => navigateTo(AppScreen.LOGIN)} />;
+        return <ResetPassword onComplete={() => setCurrentScreen(AppScreen.LOGIN)} />;
       case AppScreen.VEHICLE_REGISTRATION:
-        return <VehicleRegistration onSubmit={handleVehicleRegistration} onBack={() => navigateTo(AppScreen.SIGNUP)} />;
+        return <VehicleRegistration onSubmit={handleVehicleRegistration} onBack={() => setCurrentScreen(AppScreen.SIGNUP)} />;
       case AppScreen.DASHBOARD:
         return <Dashboard vehicle={vehicleData} user={userData} onLogout={() => supabase.auth.signOut()} />;
       default:
-        return <Onboarding onStart={() => navigateTo(AppScreen.SIGNUP)} onLogin={() => navigateTo(AppScreen.LOGIN)} />;
+        return <Onboarding onStart={() => setCurrentScreen(AppScreen.SIGNUP)} onLogin={() => setCurrentScreen(AppScreen.LOGIN)} />;
     }
   };
 

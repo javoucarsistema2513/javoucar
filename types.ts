@@ -17,11 +17,19 @@ export interface UserData {
   password?: string;
 }
 
+export interface ParkingLocation {
+  lat: number;
+  lng: number;
+  timestamp: number;
+  photo?: string; // Base64 image
+}
+
 export interface VehicleData {
   plate: string;
   model: string;
   color: string;
   state: string;
+  parking_data?: ParkingLocation | null;
 }
 
 export interface AlertMessage {
@@ -51,10 +59,3 @@ export const PRECONFIGURED_ALERTS: AlertMessage[] = [
 export const CAR_IMAGE_URL = "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=800";
 
 export const normalizePlate = (plate: string) => plate.replace(/[^A-Z0-9]/gi, '').toUpperCase();
-
-export interface ParkingLocation {
-  lat: number;
-  lng: number;
-  timestamp: number;
-  photo?: string; // Base64 image
-}
