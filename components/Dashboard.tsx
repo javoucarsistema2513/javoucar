@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
-  Send, LogOut, Bell, ShieldCheck, MapPin, Zap, Sun, 
-  Disc, Minimize2, Hash, CheckCircle2, 
-  Lightbulb, TrafficCone, Package, Clock, Calendar,
-  Navigation, Camera, Share2, Trash2, Crosshair, Car, Loader2,
-  X, Compass, LocateFixed, Navigation2
+  Send, LogOut, Bell, ShieldCheck, MapPin, Zap, 
+  Hash, CheckCircle2, TrafficCone, Package, Clock, Calendar,
+  Camera, Share2, Trash2, Loader2, Navigation2, Compass, LocateFixed, Wifi, WifiOff,
+  DoorClosed, Sun, Disc, Minimize2, Car
 } from 'lucide-react';
 import { VehicleData, UserData, PRECONFIGURED_ALERTS, normalizePlate, ParkingLocation } from '../types';
 import { supabase } from '../supabase';
@@ -32,175 +31,109 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
   const [showReceivedModal, setShowReceivedModal] = useState(false);
   const [activeAlert, setActiveAlert] = useState<AlertPayload | null>(null);
   const [alertHistory, setAlertHistory] = useState<AlertPayload[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
+  const [connStatus, setConnStatus] = useState<'connecting' | 'online' | 'offline'>('connecting');
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   
-  // Estados da Vaga
   const [parkingSpot, setParkingSpot] = useState<ParkingLocation | null>(vehicle?.parking_data || null);
   const [currentDistance, setCurrentDistance] = useState<number | null>(null);
   const [currentHeading, setCurrentHeading] = useState<number>(0);
   const [bearingToCar, setBearingToCar] = useState<number>(0);
   const [isLocating, setIsLocating] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const receivedIdsRef = useRef<Set<string>>(new Set());
   const audioContextRef = useRef<AudioContext | null>(null);
   const alarmIntervalRef = useRef<any>(null);
+  const channelRef = useRef<any>(null);
 
-  const getFirstName = (name: any) => {
-    if (!name || typeof name !== 'string') return 'Motorista';
-    return name.trim().split(' ')[0];
-  };
-
+  const getFirstName = (name: any) => (name?.trim().split(' ')[0] || 'Motorista');
   const formatTime = (dateStr: string) => {
-    if (!dateStr) return '';
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    } catch (e) { return ''; }
+    try { return new Date(dateStr).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+    catch { return ''; }
   };
 
-  // Cálculos de Geodesia
+  const getAlertIcon = (iconName: string) => {
+    const icons: Record<string, any> = {
+      'zap': Zap, 'door-closed': DoorClosed, 'sun': Sun, 
+      'package': Package, 'bell': Bell, 'disc': Disc, 'minimize-2': Minimize2
+    };
+    return icons[iconName] || Bell;
+  };
+
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371e3; 
     const p1 = lat1 * Math.PI/180;
     const p2 = lat2 * Math.PI/180;
     const dp = (lat2-lat1) * Math.PI/180;
     const dl = (lon2-lon1) * Math.PI/180;
-    const a = Math.sin(dp/2) * Math.sin(dp/2) +
-            Math.cos(p1) * Math.cos(p2) *
-            Math.sin(dl/2) * Math.sin(dl/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c; 
+    const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
   };
 
   const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
+    const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180;
     const Δλ = (lon2 - lon1) * Math.PI/180;
     const y = Math.sin(Δλ) * Math.cos(φ2);
     const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-    const θ = Math.atan2(y, x);
-    return (θ * 180 / Math.PI + 360) % 360;
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
   };
 
-  const initAudio = () => {
-    if (audioContextRef.current) return;
-    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-  };
-
-  const playBeep = () => {
-    if (!audioContextRef.current) return;
-    const ctx = audioContextRef.current;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.frequency.setValueAtTime(1200, ctx.currentTime);
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.01);
-    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.08);
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.start(); osc.stop(ctx.currentTime + 0.1);
-  };
-
-  const stopAlarm = () => { 
-    if (alarmIntervalRef.current) { 
-      clearInterval(alarmIntervalRef.current); 
-      alarmIntervalRef.current = null; 
-    } 
-  };
-
+  const initAudio = () => { if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)(); };
+  
+  const stopAlarm = () => { if (alarmIntervalRef.current) { clearInterval(alarmIntervalRef.current); alarmIntervalRef.current = null; } };
   const startAlarm = () => {
-    stopAlarm();
-    initAudio();
+    stopAlarm(); initAudio();
     const tone = () => {
-      const ctx = audioContextRef.current;
-      if (!ctx) return;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.setValueAtTime(900, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(1300, ctx.currentTime + 0.15);
+      const ctx = audioContextRef.current; if (!ctx) return;
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.frequency.setValueAtTime(1000, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1500, ctx.currentTime + 0.1);
       gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.6, ctx.currentTime + 0.05);
-      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
+      gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
       osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(); osc.stop(ctx.currentTime + 0.5);
-      if ("vibrate" in navigator) navigator.vibrate([400, 100, 400]);
+      osc.start(); osc.stop(ctx.currentTime + 0.4);
+      if ("vibrate" in navigator) navigator.vibrate([300, 100, 300]);
     };
-    tone();
-    alarmIntervalRef.current = setInterval(tone, 1300);
+    tone(); alarmIntervalRef.current = setInterval(tone, 1000);
   };
-
-  // Efeito para monitorar distância e direção (Radar)
-  useEffect(() => {
-    if (!parkingSpot || activeTab !== 'parking') return;
-
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const d = calculateDistance(
-          pos.coords.latitude, 
-          pos.coords.longitude, 
-          parkingSpot.lat, 
-          parkingSpot.lng
-        );
-        const b = calculateBearing(
-          pos.coords.latitude,
-          pos.coords.longitude,
-          parkingSpot.lat,
-          parkingSpot.lng
-        );
-        setCurrentDistance(d);
-        setBearingToCar(b);
-        if (pos.coords.heading !== null) {
-          setCurrentHeading(pos.coords.heading);
-        }
-      },
-      (err) => console.error("Erro GPS:", err),
-      { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
-    );
-
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [parkingSpot, activeTab]);
 
   useEffect(() => {
     if (!vehicle?.plate) return;
     const myPlate = normalizePlate(vehicle.plate);
-    let channel: any = null;
 
-    const setupSubscription = () => {
-      if (channel) supabase.removeChannel(channel);
-      channel = supabase.channel(`ch_${myPlate}`)
-        .on('postgres_changes', { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'alerts', 
-          filter: `target_plate=eq.${myPlate}` 
-        }, (payload) => {
-          const alert = payload.new as AlertPayload;
-          if (!alert || receivedIdsRef.current.has(alert.id)) return;
-          receivedIdsRef.current.add(alert.id);
-          setActiveAlert(alert);
-          setAlertHistory(prev => [alert, ...prev].slice(0, 2));
+    const setupRealtime = () => {
+      const channel = supabase.channel(`radar_${myPlate}`, {
+        config: { broadcast: { self: true } }
+      });
+
+      channel
+        .on('broadcast', { event: 'alert' }, ({ payload }) => {
+          if (receivedIdsRef.current.has(payload.id)) return;
+          receivedIdsRef.current.add(payload.id);
+          
+          setActiveAlert(payload);
+          // Limitado apenas aos 2 últimos alertas em tempo real
+          setAlertHistory(prev => [payload, ...prev].slice(0, 2));
           setShowReceivedModal(true);
           startAlarm();
         })
-        .subscribe(s => setIsConnected(s === 'SUBSCRIBED'));
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') setConnStatus('online');
+          else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') setConnStatus('offline');
+        });
+
+      channelRef.current = channel;
     };
 
-    supabase.from('alerts')
-      .select('*')
-      .eq('target_plate', myPlate)
-      .order('created_at', { ascending: false })
-      .limit(2)
-      .then(({ data }) => {
-        if (data) { 
-          setAlertHistory(data); 
-          data.forEach(a => receivedIdsRef.current.add(a.id)); 
-        }
-      });
+    setupRealtime();
+    // Busca inicial também limitada apenas aos 2 últimos registros
+    supabase.from('alerts').select('*').eq('target_plate', myPlate).order('created_at', { ascending: false }).limit(2)
+      .then(({ data }) => { if (data) setAlertHistory(data); });
 
-    setupSubscription();
-    return () => { if (channel) supabase.removeChannel(channel); stopAlarm(); };
+    return () => { if (channelRef.current) supabase.removeChannel(channelRef.current); stopAlarm(); };
   }, [vehicle?.plate]);
 
   const handleSendAlert = async (text: string) => {
@@ -208,317 +141,307 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
     initAudio();
     const plate = normalizePlate(targetPlate);
     if (plate.length < 7) { setErrorMsg('Placa incompleta'); return; }
-    setSending(true);
+    
+    setSending(true); 
     setErrorMsg('');
+
     try {
-      const alertConfig = PRECONFIGURED_ALERTS.find(a => a.text === text);
-      const { error } = await supabase.from('alerts').insert({
-        id: crypto.randomUUID(),
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.user) throw new Error("Sessão expirada.");
+
+      const alertId = crypto.randomUUID();
+      const alertData = {
+        id: alertId,
         target_plate: plate,
         sender_name: String(user?.fullName || 'Motorista'),
         message: text,
-        icon: alertConfig?.icon || 'bell'
+        icon: PRECONFIGURED_ALERTS.find(a => a.text === text)?.icon || 'bell',
+        created_at: new Date().toISOString()
+      };
+
+      const broadcastChannel = supabase.channel(`radar_${plate}`);
+      broadcastChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await broadcastChannel.send({
+            type: 'broadcast',
+            event: 'alert',
+            payload: alertData
+          });
+          setTimeout(() => supabase.removeChannel(broadcastChannel), 1000);
+        }
       });
-      if (error) throw error;
-      setTargetPlate('');
-      playBeep();
+
+      const { error: dbError } = await supabase.from('alerts').insert([alertData]);
+      if (dbError) throw new Error(`Erro no Banco: ${dbError.message}`);
+
+      setTargetPlate(''); 
       setShowSuccessToast(true);
-      setTimeout(() => setShowSuccessToast(false), 3000);
-    } catch (err: any) {
-      setErrorMsg("Erro de conexão.");
-    } finally {
-      setSending(false);
-    }
+      setTimeout(() => setShowSuccessToast(false), 2000);
+    } catch (err: any) { 
+      console.error("Erro Crítico:", err);
+      setErrorMsg(err.message || "Erro de conexão."); 
+    } 
+    finally { setSending(false); }
   };
 
   const handleSaveParking = async (photoBase64?: string) => {
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const newSpot: ParkingLocation = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          timestamp: Date.now(),
-          photo: photoBase64 || parkingSpot?.photo
-        };
-        
         try {
-          const { error } = await supabase
-            .from('vehicles')
-            .update({ parking_data: newSpot })
-            .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          if (!authUser) throw new Error("Não autenticado.");
+
+          const newSpot: ParkingLocation = { 
+            lat: pos.coords.latitude, 
+            lng: pos.coords.longitude, 
+            timestamp: Date.now(), 
+            photo: photoBase64 || parkingSpot?.photo 
+          };
           
+          const { error } = await supabase.from('vehicles').update({ parking_data: newSpot }).eq('user_id', authUser.id);
           if (error) throw error;
+          
           setParkingSpot(newSpot);
-          playBeep();
-        } catch (e) {
-          alert("Erro ao salvar vaga.");
+        } catch (err: any) {
+          console.error("Erro ao salvar vaga:", err);
+          alert(`Erro ao salvar vaga: ${err.message}`);
         } finally {
           setIsLocating(false);
         }
       },
-      (err) => {
-        alert("Ative o GPS para marcar a vaga.");
-        setIsLocating(false);
-      },
+      () => { alert("Ative o GPS"); setIsLocating(false); },
       { enableHighAccuracy: true }
     );
   };
 
   const handleClearParking = async () => {
-    if (!window.confirm("Apagar registro da vaga?")) return;
     try {
-      const { error } = await supabase
-        .from('vehicles')
-        .update({ parking_data: null })
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
-      if (error) throw error;
-      setParkingSpot(null);
-      setCurrentDistance(null);
-    } catch (e) {
-      alert("Erro ao limpar vaga.");
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const { error } = await supabase.from('vehicles').update({ parking_data: null }).eq('user_id', authUser.id);
+        if (error) throw error;
+        setParkingSpot(null);
+      }
+    } catch (err: any) {
+      console.error("Erro ao limpar vaga:", err);
+      alert(`Erro ao limpar: ${err.message}`);
+    }
+  };
+
+  const handleShareLocation = async () => {
+    if (!parkingSpot || isSharing) return;
+    setIsSharing(true);
+    const url = `https://www.google.com/maps/search/?api=1&query=${parkingSpot.lat},${parkingSpot.lng}`;
+    
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Minha Vaga - JávouCar', url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        alert("Link copiado para a área de transferência!");
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error("Erro ao compartilhar:", err);
+      }
+    } finally {
+      setIsSharing(false);
     }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result as string;
-      handleSaveParking(base64);
-    };
+    reader.onloadend = () => handleSaveParking(reader.result as string);
     reader.readAsDataURL(file);
   };
 
-  const handleShareLocation = async () => {
-    if (!parkingSpot) return;
-    const url = `https://www.google.com/maps/search/?api=1&query=${parkingSpot.lat},${parkingSpot.lng}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Localização do meu veículo - JávouCar',
-          text: `Estacionei meu veículo aqui:`,
-          url: url
-        });
-      } catch (e) {
-        window.open(url, '_blank');
-      }
-    } else {
-      window.open(url, '_blank');
-    }
-  };
+  useEffect(() => {
+    if (!parkingSpot || activeTab !== 'parking') return;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setCurrentDistance(calculateDistance(pos.coords.latitude, pos.coords.longitude, parkingSpot.lat, parkingSpot.lng));
+        setBearingToCar(calculateBearing(pos.coords.latitude, pos.coords.longitude, parkingSpot.lat, parkingSpot.lng));
+        if (pos.coords.heading !== null) setCurrentHeading(pos.coords.heading);
+      },
+      null, { enableHighAccuracy: true }
+    );
 
-  const renderIcon = (name: string, className: string) => {
-    const icons: any = { zap: Zap, 'door-closed': TrafficCone, sun: Lightbulb, package: Package, bell: Bell, disc: Disc, 'minimize-2': Minimize2 };
-    const IconComp = icons[name] || Bell;
-    return <IconComp className={className} />;
-  };
+    const handleOrientation = (e: DeviceOrientationEvent) => {
+      const webkitHeading = (e as any).webkitCompassHeading;
+      if (webkitHeading) setCurrentHeading(webkitHeading);
+      else if (e.alpha) setCurrentHeading(360 - e.alpha);
+    };
+
+    window.addEventListener('deviceorientation', handleOrientation);
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      window.removeEventListener('deviceorientation', handleOrientation);
+    };
+  }, [parkingSpot, activeTab]);
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 relative overflow-hidden pt-safe" onClick={initAudio}>
+    <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden pt-safe" onClick={initAudio}>
       {showSuccessToast && (
-        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-[9999] bg-green-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center space-x-2 animate-in slide-in-from-top italic font-black text-[10px] uppercase border border-white/20">
-          <CheckCircle2 size={16} /> <span>Alerta Enviado!</span>
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-[9999] bg-green-600 text-white px-5 py-2.5 rounded-full shadow-2xl flex items-center space-x-2 animate-in slide-in-from-top-4 border border-white/20">
+          <CheckCircle2 size={16} /> <span className="text-[10px] font-black uppercase tracking-widest italic">Aviso Enviado!</span>
         </div>
       )}
 
       {/* Header */}
-      <div className="bg-blue-600 pb-10 pt-8 px-5 rounded-b-[2.5rem] shadow-xl shrink-0">
-        <div className="flex justify-between items-center">
+      <div className="bg-blue-600 pb-12 pt-6 px-6 rounded-b-[3rem] shadow-2xl shrink-0 transition-all">
+        <div className="flex justify-between items-start">
           <div>
-            <div className="flex items-center space-x-1.5 mb-1">
-              <h2 className="text-white text-[9px] font-black uppercase tracking-widest italic opacity-70">Jávou<span className="text-yellow-400">Car</span></h2>
-              <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400 animate-pulse'}`} />
+            <div className="flex items-center space-x-2 mb-1.5">
+              <div className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-tighter border ${connStatus === 'online' ? 'bg-green-400/20 text-green-100 border-green-400/30' : 'bg-red-400/20 text-red-100 border-red-400/30'}`}>
+                {connStatus === 'online' ? <Wifi size={10} /> : <WifiOff size={10} />}
+                <span>{connStatus === 'online' ? 'Radar Ativo' : 'Reconectando...'}</span>
+              </div>
             </div>
-            <h1 className="text-white text-2xl font-black truncate tracking-tighter leading-none">Olá, {getFirstName(user?.fullName)}</h1>
+            <h1 className="text-white text-3xl font-black truncate tracking-tighter leading-none italic">Olá, {getFirstName(user?.fullName)}</h1>
           </div>
-          <button onClick={onLogout} className="bg-white/10 p-3 rounded-xl text-white active:scale-90 transition-all border border-white/5"><LogOut size={20} /></button>
+          <button onClick={onLogout} className="bg-white/10 p-3 rounded-2xl text-white active:scale-90 transition-all border border-white/5 backdrop-blur-md"><LogOut size={20} /></button>
         </div>
       </div>
 
       {activeTab === 'home' && (
         <>
-          <div className="px-5 -mt-6 shrink-0 z-20">
-            <div className="bg-white p-4 rounded-[1.8rem] shadow-xl border border-gray-100 flex items-center space-x-4">
-              <div className="bg-blue-600 p-2.5 rounded-2xl text-white shadow-lg"><ShieldCheck size={22} /></div>
+          <div className="px-6 -mt-8 shrink-0 z-20">
+            <div className="bg-white p-5 rounded-[2rem] shadow-xl border border-blue-50 flex items-center space-x-4">
+              <div className="bg-blue-600 p-3 rounded-2xl text-white shadow-lg"><ShieldCheck size={24} /></div>
               <div className="flex-grow min-w-0">
-                <h3 className="text-gray-950 font-black text-[13px] uppercase truncate tracking-tight">{String(vehicle?.model || 'Meu Carro')}</h3>
-                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg font-mono text-[10px] font-black border border-blue-100">{String(vehicle?.plate || '---')}</span>
+                <h3 className="text-gray-950 font-black text-sm uppercase truncate tracking-tight italic">{vehicle?.model || 'Meu Veículo'}</h3>
+                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg font-mono text-[11px] font-black border border-blue-100">{vehicle?.plate || '---'}</span>
               </div>
             </div>
           </div>
 
-          <div className="px-5 pt-4 shrink-0">
-            <div className="p-3 bg-white rounded-[1.8rem] border border-gray-100 shadow-sm">
-              <label className="text-[9px] font-black uppercase text-gray-400 mb-1 block ml-1 tracking-widest italic">Avisar qual veículo?</label>
+          <div className="px-6 pt-6 shrink-0">
+            <div className="p-4 bg-white rounded-[2rem] border border-gray-100 shadow-sm">
+              <label className="text-[9px] font-black uppercase text-gray-400 mb-2 block ml-1 tracking-[0.2em] italic">Qual placa avisar?</label>
               <div className="relative">
-                <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
                 <input
                   type="text" placeholder="ABC1D23"
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border-0 rounded-2xl uppercase font-black text-2xl tracking-[0.2em] outline-none transition-all placeholder:text-gray-200"
+                  className="w-full pl-12 pr-4 py-4 bg-gray-50 border-0 rounded-2xl uppercase font-black text-2xl tracking-[0.25em] outline-none transition-all placeholder:text-gray-200 focus:bg-white focus:ring-2 focus:ring-blue-100"
                   value={targetPlate} onChange={e => { setErrorMsg(''); setTargetPlate(e.target.value.toUpperCase()); }} maxLength={7}
                 />
               </div>
-              {errorMsg && <p className="text-red-600 text-[8px] font-black mt-2 ml-1 uppercase">{errorMsg}</p>}
+              {errorMsg && <p className="text-red-600 text-[10px] font-black mt-2 ml-1 uppercase animate-pulse leading-tight">{errorMsg}</p>}
             </div>
           </div>
 
-          <div className="flex-grow overflow-y-auto no-scrollbar px-5 pt-4 pb-32">
-            <div className="grid grid-cols-1 gap-2">
-              {PRECONFIGURED_ALERTS.map((alert) => (
-                <button 
-                  key={alert.id} 
-                  disabled={sending} 
-                  onClick={() => handleSendAlert(alert.text)} 
-                  className="flex items-center p-3.5 bg-white border border-gray-100 rounded-[1.5rem] active:bg-blue-600 active:text-white transition-all text-left group disabled:opacity-50 shadow-sm"
-                >
-                  <div className={`p-2.5 rounded-xl mr-3 ${alert.bgColor} group-active:bg-white/20`}>
-                    {renderIcon(alert.icon, `w-5 h-5 ${alert.color} group-active:text-white`)}
-                  </div>
-                  <span className="text-gray-950 font-black text-[11px] flex-grow uppercase italic tracking-tight group-active:text-white leading-tight">{alert.text}</span>
-                  <div className="bg-gray-50 p-2 rounded-full group-active:bg-white/20">
-                    {sending ? <Loader2 size={12} className="animate-spin text-blue-600" /> : <Send size={12} className="text-gray-300 group-active:text-white" />}
-                  </div>
-                </button>
-              ))}
+          <div className="flex-grow overflow-y-auto no-scrollbar px-6 pt-6 pb-32">
+            <div className="grid grid-cols-1 gap-2.5">
+              {PRECONFIGURED_ALERTS.map((alert) => {
+                const Icon = getAlertIcon(alert.icon);
+                return (
+                  <button 
+                    key={alert.id} disabled={sending} onClick={() => handleSendAlert(alert.text)} 
+                    className="flex items-center p-4 bg-white border border-gray-100 rounded-[1.8rem] active:scale-95 transition-all text-left shadow-sm group disabled:opacity-50"
+                  >
+                    <div className={`p-3 rounded-2xl mr-4 ${alert.bgColor} group-active:bg-blue-600 transition-colors`}>
+                      <Icon className={`w-6 h-6 ${alert.color} group-active:text-white`} />
+                    </div>
+                    <span className="text-gray-950 font-black text-xs flex-grow uppercase italic tracking-tight group-active:text-blue-600 leading-tight">{alert.text}</span>
+                    <div className="bg-gray-50 p-2.5 rounded-full group-active:bg-blue-50">
+                      {sending ? <Loader2 size={16} className="animate-spin text-blue-600" /> : <Send size={16} className="text-gray-300" />}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </>
       )}
 
-      {activeTab === 'events' && (
-        <div className="flex-grow overflow-y-auto no-scrollbar px-5 pt-6 pb-32">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-950 font-black text-xl uppercase italic tracking-tighter">Eventos Recentes</h3>
-          </div>
-          <div className="space-y-3">
-            {alertHistory.length === 0 ? (
-              <div className="bg-white p-12 rounded-[2.5rem] text-center border border-gray-100 shadow-sm text-gray-300 flex flex-col items-center">
-                <Calendar size={32} className="mb-3 opacity-20" />
-                <p className="text-[10px] font-black uppercase tracking-widest">Nenhum evento</p>
-              </div>
-            ) : (
-              alertHistory.map((alert) => {
-                const config = PRECONFIGURED_ALERTS.find(a => a.icon === alert.icon) || PRECONFIGURED_ALERTS[4];
-                return (
-                  <div key={alert.id} className="bg-white p-4 rounded-[1.8rem] border border-gray-50 shadow-sm flex items-start space-x-4 animate-in slide-in-from-left">
-                    <div className={`p-3 rounded-2xl ${config.bgColor}`}>{renderIcon(alert.icon, `w-5 h-5 ${config.color}`)}</div>
-                    <div className="flex-grow">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{getFirstName(alert.sender_name)}</span>
-                        <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">{formatTime(alert.created_at)}</span>
-                      </div>
-                      <p className="text-gray-950 font-black text-[12px] uppercase italic leading-tight">"{alert.message}"</p>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-
       {activeTab === 'parking' && (
-         <div className="flex-grow overflow-y-auto no-scrollbar px-5 pt-6 pb-32">
+         <div className="flex-grow overflow-y-auto no-scrollbar px-6 pt-6 pb-32 flex flex-col items-center">
             {!parkingSpot ? (
-              <div className="flex flex-col items-center justify-center pt-10 text-center space-y-8">
-                 <div className="bg-blue-50 p-8 rounded-[4rem] animate-pulse">
-                    <MapPin size={80} className="text-blue-600" />
+              <div className="flex flex-col items-center justify-center pt-10 text-center space-y-8 w-full">
+                 <div className="bg-blue-50 p-10 rounded-full animate-pulse border-4 border-white shadow-xl">
+                    <MapPin size={60} className="text-blue-600" />
                  </div>
-                 <div>
-                    <h3 className="text-2xl font-black italic uppercase tracking-tighter">Onde parei?</h3>
-                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2 max-w-[220px] mx-auto leading-relaxed">
-                       Ative o radar para encontrar seu carro com facilidade.
-                    </p>
-                 </div>
-                 <div className="w-full space-y-3 px-4">
-                    <button 
-                      onClick={() => handleSaveParking()}
-                      disabled={isLocating}
-                      className="w-full py-6 bg-blue-600 text-white font-black rounded-[2rem] shadow-xl flex items-center justify-center space-x-3 uppercase tracking-widest text-xs active:scale-95 transition-all"
-                    >
+                 <h3 className="text-2xl font-black italic uppercase tracking-tighter">Radar de Vaga</h3>
+                 <div className="w-full space-y-3">
+                    <button onClick={() => handleSaveParking()} disabled={isLocating} className="w-full py-6 bg-blue-600 text-white font-black rounded-[2rem] shadow-xl flex items-center justify-center space-x-3 uppercase tracking-widest text-xs active:scale-95">
                       {isLocating ? <Loader2 className="animate-spin" /> : <LocateFixed size={20} />}
-                      <span>{isLocating ? 'Capturando GPS...' : 'Fixar Localização'}</span>
+                      <span>{isLocating ? 'Capturando...' : 'Fixar Localização'}</span>
                     </button>
-                    
-                    <button 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full py-4 bg-gray-100 text-gray-700 font-black rounded-[2rem] flex items-center justify-center space-x-3 uppercase tracking-widest text-[10px] active:scale-95 transition-all"
-                    >
-                      <Camera size={18} />
-                      <span>Fixar com Foto</span>
+                    <button onClick={() => fileInputRef.current?.click()} className="w-full py-4 bg-gray-100 text-gray-700 font-black rounded-[2rem] flex items-center justify-center space-x-3 text-[10px] uppercase tracking-widest">
+                      <Camera size={18} /> <span>Tirar Foto da Vaga</span>
                     </button>
                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handlePhotoUpload} />
                  </div>
               </div>
             ) : (
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
-                 {/* RADAR VISUAL - TAMANHO REDUZIDO */}
-                 <div className="relative bg-gray-950 rounded-[2.5rem] w-full max-w-[280px] aspect-square mx-auto shadow-2xl overflow-hidden border-4 border-white flex items-center justify-center">
-                    {/* Anéis de Radar */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
-                       <div className="w-[80%] h-[80%] border border-blue-500/10 rounded-full" />
-                       <div className="w-[60%] h-[60%] border border-blue-500/20 rounded-full" />
-                       <div className="w-[40%] h-[40%] border border-blue-500/30 rounded-full" />
-                       
-                       {/* Scanner Line */}
-                       <div className="absolute w-full h-full animate-[spin_5s_linear_infinite] origin-center">
-                          <div className="absolute top-1/2 left-1/2 w-1/2 h-0.5 bg-gradient-to-r from-blue-500/50 to-transparent origin-left -translate-y-1/2" />
-                       </div>
+              <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300 w-full">
+                 <div className="relative bg-[#0a0f1e] rounded-full w-[260px] h-[260px] mx-auto shadow-[0_20px_60px_rgba(0,0,0,0.4)] border-[8px] border-white flex items-center justify-center overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-transparent" />
+                    
+                    <div className="absolute w-full h-full transition-transform duration-300 ease-out" style={{ transform: `rotate(${-currentHeading}deg)` }}>
+                        <span className="absolute top-4 left-1/2 -translate-x-1/2 text-white font-black text-xl italic drop-shadow-lg">N</span>
+                        <span className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/40 font-black text-xl italic">S</span>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 font-black text-xl italic">L</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 font-black text-xl italic">O</span>
+                        
+                        {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => (
+                          <div key={deg} className="absolute inset-0 flex items-start justify-center" style={{ transform: `rotate(${deg}deg)` }}>
+                             <div className="w-0.5 h-2.5 bg-white/20 mt-1" />
+                          </div>
+                        ))}
                     </div>
 
-                    {/* Direcionador (Compass Needle) */}
-                    <div 
-                      className="absolute w-full h-full flex items-center justify-center transition-transform duration-700 ease-out"
-                      style={{ transform: `rotate(${bearingToCar - currentHeading}deg)` }}
-                    >
-                       <div className="relative flex flex-col items-center">
-                          <Navigation2 size={48} className="text-blue-500 fill-blue-500 drop-shadow-[0_0_10px_rgba(59,130,246,0.6)]" />
-                          <div className="absolute -top-10 bg-blue-600 text-white px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest whitespace-nowrap shadow-lg">
-                            MEU CARRO
+                    <div className="absolute w-full h-full transition-transform duration-500 ease-out" style={{ transform: `rotate(${bearingToCar - currentHeading}deg)` }}>
+                       <div className="absolute top-2 left-1/2 -translate-x-1/2 flex flex-col items-center">
+                          <div className="bg-blue-600 p-2.5 rounded-2xl shadow-[0_0_20px_rgba(37,99,235,0.8)] border-2 border-white animate-bounce">
+                             <Car size={24} className="text-white fill-white" />
                           </div>
                        </div>
                     </div>
 
-                    {/* Central Status */}
-                    <div className="absolute bottom-6 text-center">
-                       <div className="text-3xl font-black text-white italic tracking-tighter">
+                    <div className="absolute z-10 flex flex-col items-center">
+                       <div className="text-white text-3xl font-black italic tracking-tighter leading-none mb-1">
                           {currentDistance !== null ? (currentDistance < 1000 ? `${Math.round(currentDistance)}m` : `${(currentDistance/1000).toFixed(1)}km`) : '--'}
                        </div>
-                       <div className="text-[7px] font-black text-blue-400 uppercase tracking-[0.2em]">Direção Ativa</div>
+                       <div className="text-[7px] font-black text-blue-400 uppercase tracking-[0.3em]">Distância Real</div>
+                       <Navigation2 size={16} className="text-white fill-white mt-2 animate-pulse" />
                     </div>
+
+                    <div className="absolute inset-4 border border-white/5 rounded-full pointer-events-none" />
+                    <div className="absolute inset-10 border border-white/5 rounded-full pointer-events-none" />
                  </div>
 
-                 {/* BARRA DE AÇÕES COMPACTA */}
-                 <div className="grid grid-cols-3 gap-2">
-                    <button onClick={handleShareLocation} className="flex flex-col items-center justify-center py-3 bg-white rounded-[1.2rem] border border-gray-100 shadow-sm text-blue-600 active:bg-blue-50 transition-all">
-                       <Share2 size={18} />
-                       <span className="text-[7px] font-black uppercase mt-1 tracking-widest">Enviar</span>
+                 <div className="grid grid-cols-3 gap-3 px-2">
+                    <button 
+                      onClick={handleShareLocation} 
+                      disabled={isSharing}
+                      className="flex flex-col items-center justify-center py-4 bg-white rounded-[1.8rem] border border-gray-100 text-blue-600 shadow-sm active:bg-blue-50 disabled:opacity-50"
+                    >
+                       {isSharing ? <Loader2 size={20} className="animate-spin" /> : <Share2 size={20} />} 
+                       <span className="text-[7px] font-black uppercase mt-1.5 tracking-widest">Enviar</span>
                     </button>
-                    <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center py-3 bg-white rounded-[1.2rem] border border-gray-100 shadow-sm text-blue-600 active:bg-blue-50 transition-all">
-                       <Camera size={18} />
-                       <span className="text-[7px] font-black uppercase mt-1 tracking-widest">Foto</span>
+                    <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center py-4 bg-white rounded-[1.8rem] border border-gray-100 text-blue-600 shadow-sm active:bg-blue-50">
+                       <Camera size={20} /> <span className="text-[7px] font-black uppercase mt-1.5 tracking-widest">Foto</span>
                     </button>
-                    <button onClick={handleClearParking} className="flex flex-col items-center justify-center py-3 bg-red-50 rounded-[1.2rem] border border-red-100 shadow-sm text-red-500 active:bg-red-100 transition-all">
-                       <Trash2 size={18} />
-                       <span className="text-[7px] font-black uppercase mt-1 tracking-widest">Limpar</span>
+                    <button onClick={() => { if(confirm("Apagar vaga?")) handleClearParking(); }} className="flex flex-col items-center justify-center py-4 bg-red-50 rounded-[1.8rem] border border-red-100 text-red-500 shadow-sm active:bg-red-100">
+                       <Trash2 size={20} /> <span className="text-[7px] font-black uppercase mt-1.5 tracking-widest">Limpar</span>
                     </button>
-                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={handlePhotoUpload} />
                  </div>
 
                  {parkingSpot.photo && (
-                    <div className="rounded-[2rem] overflow-hidden shadow-lg border-2 border-white relative aspect-[2/1] group">
+                    <div className="rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white relative aspect-[16/9] mx-2">
                        <img src={parkingSpot.photo} alt="Referência" className="w-full h-full object-cover" />
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-4">
-                          <div className="flex justify-between items-end w-full">
-                            <div>
-                               <span className="text-white text-[9px] font-black uppercase tracking-widest italic flex items-center"><Camera size={12} className="mr-1.5" /> Referência Visual</span>
-                               <span className="text-white/60 text-[7px] font-bold uppercase tracking-widest block">Registrado às {new Date(parkingSpot.timestamp).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
-                            </div>
-                            <button onClick={() => fileInputRef.current?.click()} className="p-2 bg-white/20 backdrop-blur-md rounded-lg text-white active:scale-90 transition-all">
-                               <Navigation size={14} />
-                            </button>
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-5">
+                          <div className="w-full flex justify-between items-end">
+                             <div>
+                                <span className="text-white text-[9px] font-black uppercase tracking-widest italic flex items-center mb-0.5"><Camera size={12} className="mr-1.5" /> Referência Visual</span>
+                                <span className="text-white/50 text-[7px] font-bold uppercase">{formatTime(new Date(parkingSpot.timestamp).toISOString())}</span>
+                             </div>
+                             <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${parkingSpot.lat},${parkingSpot.lng}`)} className="bg-blue-600 text-white p-3 rounded-2xl shadow-lg">
+                                <Compass size={20} />
+                             </button>
                           </div>
                        </div>
                     </div>
@@ -528,43 +451,77 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout }) => {
          </div>
       )}
 
-      {/* Nav Superior */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-3xl border-t border-gray-100 px-8 pt-4 pb-[calc(1.5rem+var(--sab))] z-[100] flex justify-around items-center rounded-t-[3rem] shadow-[0_-10px_50px_rgba(0,0,0,0.06)]">
-        <button onClick={() => { setActiveTab('home'); stopAlarm(); }} className={`flex flex-col items-center space-y-1.5 transition-all ${activeTab === 'home' ? 'text-blue-600' : 'text-gray-300'}`}>
-          <div className={`p-2.5 rounded-2xl transition-all ${activeTab === 'home' ? 'bg-blue-50' : 'bg-transparent'}`}><Bell size={26} /></div>
-          <span className="text-[9px] font-black uppercase italic tracking-widest">Alertar</span>
+      {activeTab === 'events' && (
+        <div className="flex-grow overflow-y-auto no-scrollbar px-6 pt-6 pb-32">
+          <h3 className="text-gray-950 font-black text-xl uppercase italic tracking-tighter mb-4">Últimos Alertas</h3>
+          <div className="space-y-3">
+            {alertHistory.length === 0 ? (
+              <div className="bg-white p-12 rounded-[2.5rem] text-center border border-gray-100 shadow-sm text-gray-300 flex flex-col items-center">
+                <Calendar size={40} className="mb-4 opacity-20" />
+                <p className="text-[10px] font-black uppercase tracking-widest italic">Nada por enquanto</p>
+              </div>
+            ) : (
+              alertHistory.map((alert) => (
+                <div key={alert.id} className="bg-white p-4 rounded-3xl border border-gray-50 shadow-sm flex items-start space-x-4 animate-in slide-in-from-left">
+                  <div className="p-3 rounded-2xl bg-blue-50">
+                    <Bell className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-grow">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{getFirstName(alert.sender_name)}</span>
+                      <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">{formatTime(alert.created_at)}</span>
+                    </div>
+                    <p className="text-gray-950 font-black text-[12px] uppercase italic leading-tight">"{alert.message}"</p>
+                  </div>
+                </div>
+              ))
+            )}
+            {alertHistory.length > 0 && (
+              <p className="text-center text-[8px] font-black text-gray-300 uppercase tracking-[0.3em] pt-4 italic">
+                Apenas as 2 mensagens mais recentes são exibidas
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Nav de Abas */}
+      <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-3xl border-t border-gray-100 px-8 pt-4 pb-[calc(1.5rem+var(--sab))] z-[100] flex justify-around items-center rounded-t-[3rem] shadow-[0_-15px_50px_rgba(0,0,0,0.1)]">
+        <button onClick={() => { setActiveTab('home'); stopAlarm(); }} className={`flex flex-col items-center space-y-2 transition-all ${activeTab === 'home' ? 'text-blue-600 scale-110' : 'text-gray-300'}`}>
+          <div className={`p-2.5 rounded-2xl transition-all ${activeTab === 'home' ? 'bg-blue-100 shadow-inner' : ''}`}><Bell size={28} /></div>
+          <span className="text-[8px] font-black uppercase italic tracking-widest">Avisar</span>
         </button>
-        <button onClick={() => { setActiveTab('parking'); stopAlarm(); }} className={`flex flex-col items-center space-y-1.5 transition-all ${activeTab === 'parking' ? 'text-blue-600' : 'text-gray-300'}`}>
-          <div className={`p-2.5 rounded-2xl transition-all ${activeTab === 'parking' ? 'bg-blue-50' : 'bg-transparent'}`}><Compass size={26} /></div>
-          <span className="text-[9px] font-black uppercase italic tracking-widest">Radar Vaga</span>
+        <button onClick={() => { setActiveTab('parking'); stopAlarm(); }} className={`flex flex-col items-center space-y-2 transition-all ${activeTab === 'parking' ? 'text-blue-600 scale-110' : 'text-gray-300'}`}>
+          <div className={`p-2.5 rounded-2xl transition-all ${activeTab === 'parking' ? 'bg-blue-100 shadow-inner' : ''}`}><Compass size={28} /></div>
+          <span className="text-[8px] font-black uppercase italic tracking-widest">Radar</span>
         </button>
-        <button onClick={() => { setActiveTab('events'); stopAlarm(); }} className={`flex flex-col items-center space-y-1.5 transition-all ${activeTab === 'events' ? 'text-blue-600' : 'text-gray-300'}`}>
-          <div className={`p-2.5 rounded-2xl transition-all ${activeTab === 'events' ? 'bg-blue-50' : 'bg-transparent'}`}><Clock size={26} /></div>
-          <span className="text-[9px] font-black uppercase italic tracking-widest">Eventos</span>
+        <button onClick={() => { setActiveTab('events'); stopAlarm(); }} className={`flex flex-col items-center space-y-2 transition-all ${activeTab === 'events' ? 'text-blue-600 scale-110' : 'text-gray-300'}`}>
+          <div className={`p-2.5 rounded-2xl transition-all ${activeTab === 'events' ? 'bg-blue-100 shadow-inner' : ''}`}><Clock size={28} /></div>
+          <span className="text-[8px] font-black uppercase italic tracking-widest">Histórico</span>
         </button>
       </div>
 
-      {/* MODAL DE ALERTA RECEBIDO - REDUZIDO */}
+      {/* Modal Alerta Recebido - Prioridade Máxima */}
       {showReceivedModal && activeAlert && (
-        <div className="fixed inset-0 bg-gray-950/90 backdrop-blur-xl z-[99999999] flex items-center justify-center p-4 animate-in fade-in duration-300">
-           <div className="bg-white w-full max-w-[300px] rounded-[3rem] shadow-[0_15px_50px_rgba(0,0,0,0.3)] overflow-hidden animate-in zoom-in-95 flex flex-col border border-white/20">
-              <div className={`p-8 flex flex-col items-center text-center ${(PRECONFIGURED_ALERTS.find(a => a.icon === activeAlert.icon) || PRECONFIGURED_ALERTS[4]).bgColor.replace('-50', '-600')}`}>
-                 <div className="bg-white p-5 rounded-[2.5rem] mb-5 shadow-2xl animate-pulse ring-4 ring-white/10">
-                    {renderIcon(activeAlert.icon, `w-12 h-12 ${(PRECONFIGURED_ALERTS.find(a => a.icon === activeAlert.icon) || PRECONFIGURED_ALERTS[4]).color}`)}
+        <div className="fixed inset-0 bg-gray-950/98 backdrop-blur-3xl z-[99999999] flex items-center justify-center p-6 animate-in fade-in duration-300">
+           <div className="bg-white w-full max-w-[290px] rounded-[3rem] shadow-[0_30px_100px_rgba(0,0,0,0.6)] overflow-hidden animate-in zoom-in-95 flex flex-col">
+              <div className="bg-red-600 p-8 flex flex-col items-center text-center">
+                 <div className="bg-white p-5 rounded-[2.5rem] mb-4 shadow-2xl animate-bounce">
+                    <Bell className="w-10 h-10 text-red-600" />
                  </div>
-                 <h2 className="text-white text-2xl font-black uppercase italic tracking-tighter leading-none mb-1">AVISO URGENTE!</h2>
-                 <p className="text-white/60 text-[8px] font-black uppercase tracking-[0.2em]">Propriedade de {getFirstName(user?.fullName)}</p>
+                 <h2 className="text-white text-xl font-black uppercase italic tracking-tighter leading-none">ALERTA VEICULAR!</h2>
               </div>
-              <div className="p-6 space-y-5 text-center">
-                 <div className="bg-gray-50 p-4 rounded-[2rem] border border-gray-100 shadow-inner">
-                    <span className="text-blue-600 font-mono font-black text-2xl tracking-[0.2em] block mb-1">{String(vehicle?.plate || '---')}</span>
-                    <span className="text-gray-400 font-black text-[9px] uppercase italic tracking-widest">{String(vehicle?.model || '')}</span>
+              <div className="p-7 space-y-5 text-center">
+                 <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-inner">
+                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Para o seu veículo</span>
+                    <span className="text-blue-600 font-mono font-black text-2xl tracking-widest block uppercase leading-none">{vehicle?.plate}</span>
                  </div>
-                 <div className="bg-amber-400/10 p-5 rounded-[2.5rem] border-2 border-amber-400/20">
-                    <p className="text-gray-950 text-base font-black italic uppercase leading-tight tracking-tight">"{activeAlert.message}"</p>
+                 <div className="space-y-1">
+                    <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest italic">{getFirstName(activeAlert.sender_name)} avisou:</span>
+                    <p className="text-gray-950 text-base font-black italic uppercase leading-tight tracking-tight px-1">"{activeAlert.message}"</p>
                  </div>
-                 <button onClick={() => { stopAlarm(); playBeep(); setShowReceivedModal(false); }} className="w-full py-5 bg-blue-600 text-white font-black rounded-[2rem] text-xs uppercase shadow-xl active:scale-95 transition-all tracking-[0.2em] border-b-[4px] border-blue-800">
-                   ENTENDI E VOU AGORA
+                 <button onClick={() => { stopAlarm(); setShowReceivedModal(false); }} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl text-xs uppercase shadow-xl active:scale-95 border-b-4 border-blue-800 transition-all">
+                   OK, Entendido!
                  </button>
               </div>
            </div>
