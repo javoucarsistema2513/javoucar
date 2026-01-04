@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'javoucar-v2';
+const CACHE_NAME = 'javoucar-v4';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -8,27 +8,21 @@ const STATIC_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap'
 ];
 
-// Instalação do Service Worker
+// Instalação
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('SW: Pre-caching assets');
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
 });
 
-// Ativação e limpeza de caches antigos
+// Ativação
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('SW: Clearing old cache');
-            return caches.delete(cache);
-          }
+          if (cache !== CACHE_NAME) return caches.delete(cache);
         })
       );
     })
@@ -36,40 +30,46 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
+// Clique na Notificação: Abre ou foca no app
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      if (clientList.length > 0) {
+        let client = clientList[0];
+        for (let i = 0; i < clientList.length; i++) {
+          if (clientList[i].focused) client = clientList[i];
+        }
+        return client.focus();
+      }
+      return clients.openWindow('/');
+    })
+  );
+});
+
 // Estratégia de Fetch
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+  
+  // Ignorar requisições do Supabase para não quebrar o Realtime
+  if (url.hostname.includes('supabase.co')) return;
 
-  // Não cachear chamadas do Supabase ou Realtime
-  if (url.hostname.includes('supabase.co')) {
-    return;
-  }
-
-  // Estratégia Cache-First para ativos estáticos, Network-First para o resto
   event.respondWith(
     caches.match(request).then((response) => {
-      if (response) {
-        return response;
-      }
-      return fetch(request).then((networkResponse) => {
-        // Cachear novos ativos estáticos de confiança
-        if (
-          request.method === 'GET' && 
-          (url.origin === self.location.origin || url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('cdn.tailwindcss.com'))
-        ) {
+      return response || fetch(request).then((networkResponse) => {
+        if (request.method === 'GET' && (url.origin === self.location.origin || url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('cdn.tailwindcss.com'))) {
           const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
-          });
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache));
         }
         return networkResponse;
       });
     }).catch(() => {
-      // Fallback offline para navegação
       if (request.mode === 'navigate') {
         return caches.match('./index.html');
       }
+      return null;
     })
   );
 });

@@ -58,12 +58,19 @@
             from { opacity: 0; transform: scale(0.99); }
             to { opacity: 1; transform: scale(1); }
         }
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
         .animate-app {
             animation: fadeIn 0.25s ease-out forwards;
         }
+        .animate-spin-slow {
+            animation: spin-slow 10s linear infinite;
+        }
 
         input, select, textarea {
-            font-size: 16px !important; /* Essencial para evitar zoom no iOS */
+            font-size: 16px !important; 
         }
 
         @media screen and (max-height: 550px) {
