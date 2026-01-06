@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AppScreen, UserData, VehicleData, normalizePlate } from './types';
 import { supabase } from './supabase';
 import Onboarding from './components/Onboarding';
@@ -11,7 +11,6 @@ import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 
 const App: React.FC = () => {
-  // Inicialização rápida baseada em cache
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(() => {
     const cached = localStorage.getItem('javoucar_session_active');
     return cached ? AppScreen.DASHBOARD : AppScreen.ONBOARDING;
@@ -27,7 +26,8 @@ const App: React.FC = () => {
     return cached ? JSON.parse(cached) : null;
   });
   
-  const [loading, setLoading] = useState(!localStorage.getItem('javoucar_session_active'));
+  const [loading, setLoading] = useState(true);
+  const initialized = useRef(false);
 
   const fetchUserData = useCallback(async (user: any) => {
     if (!user) { 
@@ -46,7 +46,6 @@ const App: React.FC = () => {
       setUserData(newUserData);
       localStorage.setItem('javoucar_user', JSON.stringify(newUserData));
 
-      // Busca veículo (em paralelo com a UI já aberta se houver cache)
       const { data: vehicle } = await supabase.from('vehicles').select('*').eq('user_id', user.id).maybeSingle();
 
       if (vehicle) {
@@ -55,6 +54,7 @@ const App: React.FC = () => {
         localStorage.setItem('javoucar_session_active', 'true');
         setCurrentScreen(AppScreen.DASHBOARD);
       } else {
+        localStorage.removeItem('javoucar_vehicle');
         setCurrentScreen(AppScreen.VEHICLE_REGISTRATION);
       }
     } catch (err) {
@@ -64,32 +64,60 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const handleLocalLogout = useCallback(() => {
+    localStorage.clear();
+    setUserData(null);
+    setVehicleData(null);
+    setCurrentScreen(AppScreen.ONBOARDING);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
-    // Validação de sessão em background
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        fetchUserData(session.user);
-      } else {
-        localStorage.clear();
-        setLoading(false);
-        setCurrentScreen(AppScreen.ONBOARDING);
-      }
-    });
+    if (initialized.current) return;
+    initialized.current = true;
 
+    // Failsafe mais rápido: 2.5s para liberar a UI caso o Supabase demore
+    const failsafe = setTimeout(() => {
+      setLoading(false);
+    }, 2500);
+
+    // Gerenciamento único de estado de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        await fetchUserData(session.user);
-      } else if (event === 'SIGNED_OUT') {
-        localStorage.clear();
-        setUserData(null);
-        setVehicleData(null);
-        setCurrentScreen(AppScreen.ONBOARDING);
-        setLoading(false);
+      if (session) {
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+          await fetchUserData(session.user);
+        }
+      } else {
+        // Se não há sessão no Supabase, verificamos se devemos deslogar localmente
+        const hasSession = localStorage.getItem('javoucar_session_active');
+        if (event === 'SIGNED_OUT' || !hasSession) {
+          handleLocalLogout();
+        } else {
+          setLoading(false);
+        }
       }
+      clearTimeout(failsafe);
     });
 
-    return () => subscription.unsubscribe();
-  }, [fetchUserData]);
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(failsafe);
+    };
+  }, [fetchUserData, handleLocalLogout]);
+
+  const handleLogout = async () => {
+    handleLocalLogout();
+    try { await supabase.auth.signOut(); } catch (e) {}
+  };
+
+  const handleVehicleUpdate = (updatedVehicle: VehicleData | null) => {
+    setVehicleData(updatedVehicle);
+    if (updatedVehicle) {
+      localStorage.setItem('javoucar_vehicle', JSON.stringify(updatedVehicle));
+    } else {
+      localStorage.removeItem('javoucar_vehicle');
+    }
+  };
 
   const handleUserSignup = async (data: UserData) => {
     setLoading(true);
@@ -101,7 +129,7 @@ const App: React.FC = () => {
       });
       if (error) throw error;
       if (authData.user && !authData.session) {
-        alert("Verifique seu e-mail!");
+        alert("Verifique seu e-mail para confirmar a conta!");
         setCurrentScreen(AppScreen.LOGIN);
       }
     } catch (e: any) { alert(e.message); } finally { setLoading(false); }
@@ -112,7 +140,10 @@ const App: React.FC = () => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: data.email, password: data.password! });
       if (error) throw error;
-    } catch (e: any) { alert("Login falhou."); setLoading(false); }
+    } catch (e: any) { 
+      alert("Login falhou. Verifique e-mail e senha."); 
+      setLoading(false); 
+    }
   };
 
   const handleVehicleRegistration = async (data: VehicleData) => {
@@ -125,8 +156,7 @@ const App: React.FC = () => {
       if (error) throw error;
       
       const newVehicle = { ...data, plate: normalized };
-      setVehicleData(newVehicle);
-      localStorage.setItem('javoucar_vehicle', JSON.stringify(newVehicle));
+      handleVehicleUpdate(newVehicle);
       localStorage.setItem('javoucar_session_active', 'true');
       setCurrentScreen(AppScreen.DASHBOARD);
     } catch (e: any) { alert(e.message); } finally { setLoading(false); }
@@ -136,9 +166,9 @@ const App: React.FC = () => {
     return (
       <div className="h-[100dvh] w-full bg-blue-600 flex items-center justify-center overflow-hidden">
         <div className="text-white text-center">
-          <div className="w-12 h-12 border-4 border-white/20 border-t-yellow-400 rounded-full animate-spin mx-auto mb-6"></div>
+          <div className="w-10 h-10 border-4 border-white/20 border-t-yellow-400 rounded-full animate-spin mx-auto mb-6"></div>
           <h1 className="text-3xl font-black italic tracking-tighter mb-2">Jávou<span className="text-yellow-400">Car</span></h1>
-          <p className="text-[8px] font-black uppercase tracking-[0.4em] opacity-40">Otimizando sua conexão...</p>
+          <p className="text-[7px] font-black uppercase tracking-[0.4em] opacity-40 animate-pulse">Sincronizando Radar...</p>
         </div>
       </div>
     );
@@ -152,7 +182,7 @@ const App: React.FC = () => {
       case AppScreen.FORGOT_PASSWORD: return <ForgotPassword onBack={() => setCurrentScreen(AppScreen.LOGIN)} />;
       case AppScreen.RESET_PASSWORD: return <ResetPassword onComplete={() => setCurrentScreen(AppScreen.LOGIN)} />;
       case AppScreen.VEHICLE_REGISTRATION: return <VehicleRegistration onSubmit={handleVehicleRegistration} onBack={() => setCurrentScreen(AppScreen.SIGNUP)} />;
-      case AppScreen.DASHBOARD: return <Dashboard vehicle={vehicleData} user={userData} onLogout={() => supabase.auth.signOut()} />;
+      case AppScreen.DASHBOARD: return <Dashboard vehicle={vehicleData} user={userData} onLogout={handleLogout} onVehicleUpdate={handleVehicleUpdate} />;
       default: return <Onboarding onStart={() => setCurrentScreen(AppScreen.SIGNUP)} onLogin={() => setCurrentScreen(AppScreen.LOGIN)} />;
     }
   };

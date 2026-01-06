@@ -32,39 +32,38 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack, onGoToSignup, onForgotPa
   };
 
   return (
-    <div className="flex flex-col h-full bg-white p-5">
-      <div className="flex items-center mb-1">
-        <button onClick={onBack} className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors">
+    <div className="flex flex-col h-full bg-white p-5 pt-safe">
+      <div className="flex items-center mb-0.5">
+        <button onClick={onBack} className="p-2 -ml-2 active:bg-gray-100 rounded-full transition-colors">
           <ArrowLeft className="w-5 h-5 text-gray-700" />
         </button>
       </div>
 
-      <div className="text-center mb-6">
+      <div className="text-center mb-5">
         <h1 
-          className="text-3xl font-black text-gray-900 tracking-tighter italic"
-          style={{ textShadow: '0 4px 8px rgba(0,0,0,0.08)' }}
+          className="text-2xl font-black text-gray-900 tracking-tighter italic"
         >
           Jávou<span className="text-yellow-400">Car</span>
         </h1>
-        <p className="text-gray-400 mt-0.5 font-bold uppercase tracking-widest text-[9px]">Acesse sua conta</p>
+        <p className="text-gray-400 mt-0.5 font-bold uppercase tracking-widest text-[8px]">Acesse sua conta</p>
       </div>
 
-      <form onSubmit={handleLoginSubmit} className="space-y-4 flex-grow">
+      <form onSubmit={handleLoginSubmit} className="space-y-3.5 flex-grow">
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-xl text-[11px] font-bold border border-red-100">
+          <div className="bg-red-50 text-red-600 p-2.5 rounded-xl text-[10px] font-bold border border-red-100">
             {error}
           </div>
         )}
 
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">E-mail</label>
+          <label className="text-[9px] font-bold text-gray-400 uppercase ml-1 tracking-widest">E-mail</label>
           <div className="relative">
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               required
               type="email"
               placeholder="seu@email.com"
-              className="w-full pl-11 pr-4 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+              className="w-full pl-11 pr-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-1 focus:ring-blue-500 outline-none transition-all text-xs"
               value={email}
               onChange={e => setEmail(e.target.value)}
             />
@@ -72,30 +71,30 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack, onGoToSignup, onForgotPa
         </div>
 
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Senha</label>
+          <label className="text-[9px] font-bold text-gray-400 uppercase ml-1 tracking-widest">Senha</label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               required
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
-              className="w-full pl-11 pr-11 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
+              className="w-full pl-11 pr-11 py-3 bg-gray-50 border-0 rounded-xl focus:ring-1 focus:ring-blue-500 outline-none transition-all text-xs"
               value={password}
               onChange={e => setPassword(e.target.value)}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 p-2"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 p-2"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          <div className="flex justify-end pr-1">
+          <div className="flex justify-end">
             <button 
               type="button" 
               onClick={onForgotPassword}
-              className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-widest"
+              className="text-[9px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-widest"
             >
               Esqueci a senha
             </button>
@@ -106,18 +105,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, onBack, onGoToSignup, onForgotPa
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center space-x-2 uppercase tracking-widest text-xs"
+            className="w-full py-4 bg-blue-600 text-white font-black rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center space-x-2 uppercase tracking-widest text-[10px]"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
-            <span>{loading ? 'Entrando...' : 'Entrar Agora'}</span>
+            <span>{loading ? 'Entrando...' : 'Entrar'}</span>
           </button>
           
           <button
             type="button"
             onClick={onGoToSignup}
-            className="w-full py-2 text-gray-500 font-bold text-[11px]"
+            className="w-full py-1 text-gray-500 font-bold text-[10px]"
           >
-            Ainda não é membro? <span className="text-blue-600 border-b border-blue-600">Criar Conta</span>
+            Ainda não é membro? <span className="text-blue-600 underline">Criar Conta</span>
           </button>
         </div>
       </form>
