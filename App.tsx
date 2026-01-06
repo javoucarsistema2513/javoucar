@@ -11,29 +11,14 @@ import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 
 const App: React.FC = () => {
-  const [currentScreen, setCurrentScreen] = useState<AppScreen>(() => {
-    const cached = localStorage.getItem('javoucar_session_active');
-    return cached ? AppScreen.DASHBOARD : AppScreen.ONBOARDING;
-  });
-  
-  const [userData, setUserData] = useState<UserData | null>(() => {
-    const cached = localStorage.getItem('javoucar_user');
-    return cached ? JSON.parse(cached) : null;
-  });
-  
-  const [vehicleData, setVehicleData] = useState<VehicleData | null>(() => {
-    const cached = localStorage.getItem('javoucar_vehicle');
-    return cached ? JSON.parse(cached) : null;
-  });
-  
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>(AppScreen.ONBOARDING);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [vehicleData, setVehicleData] = useState<VehicleData | null>(null);
   const [loading, setLoading] = useState(true);
   const initialized = useRef(false);
 
-  const fetchUserData = useCallback(async (user: any) => {
-    if (!user) { 
-      setLoading(false); 
-      return; 
-    }
+  const syncSession = useCallback(async (user: any) => {
+    if (!user) return;
 
     try {
       const userMeta = user.user_metadata;
@@ -46,7 +31,7 @@ const App: React.FC = () => {
       setUserData(newUserData);
       localStorage.setItem('javoucar_user', JSON.stringify(newUserData));
 
-      const { data: vehicle } = await supabase.from('vehicles').select('*').eq('user_id', user.id).maybeSingle();
+      const { data: vehicle, error } = await supabase.from('vehicles').select('*').eq('user_id', user.id).maybeSingle();
 
       if (vehicle) {
         setVehicleData(vehicle);
@@ -54,7 +39,6 @@ const App: React.FC = () => {
         localStorage.setItem('javoucar_session_active', 'true');
         setCurrentScreen(AppScreen.DASHBOARD);
       } else {
-        localStorage.removeItem('javoucar_vehicle');
         setCurrentScreen(AppScreen.VEHICLE_REGISTRATION);
       }
     } catch (err) {
@@ -64,50 +48,54 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleLocalLogout = useCallback(() => {
-    localStorage.clear();
-    setUserData(null);
-    setVehicleData(null);
-    setCurrentScreen(AppScreen.ONBOARDING);
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
-    // Failsafe mais rápido: 2.5s para liberar a UI caso o Supabase demore
-    const failsafe = setTimeout(() => {
-      setLoading(false);
-    }, 2500);
+    // Unifica a inicialização em um único listener
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await syncSession(session.user);
+      } else {
+        const cached = localStorage.getItem('javoucar_session_active');
+        if (!cached) setCurrentScreen(AppScreen.ONBOARDING);
+        setLoading(false);
+      }
+    };
 
-    // Gerenciamento único de estado de autenticação
+    initAuth();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
-          await fetchUserData(session.user);
+        if (event === 'SIGNED_IN') {
+          await syncSession(session.user);
         }
-      } else {
-        // Se não há sessão no Supabase, verificamos se devemos deslogar localmente
-        const hasSession = localStorage.getItem('javoucar_session_active');
-        if (event === 'SIGNED_OUT' || !hasSession) {
-          handleLocalLogout();
-        } else {
-          setLoading(false);
-        }
+      } else if (event === 'SIGNED_OUT') {
+        localStorage.clear();
+        setUserData(null);
+        setVehicleData(null);
+        setCurrentScreen(AppScreen.ONBOARDING);
+        setLoading(false);
       }
-      clearTimeout(failsafe);
     });
 
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(failsafe);
-    };
-  }, [fetchUserData, handleLocalLogout]);
+    return () => subscription.unsubscribe();
+  }, [syncSession]);
 
   const handleLogout = async () => {
-    handleLocalLogout();
-    try { await supabase.auth.signOut(); } catch (e) {}
+    setLoading(true);
+    try {
+      await supabase.auth.signOut();
+      localStorage.clear();
+      setUserData(null);
+      setVehicleData(null);
+      setCurrentScreen(AppScreen.ONBOARDING);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleVehicleUpdate = (updatedVehicle: VehicleData | null) => {

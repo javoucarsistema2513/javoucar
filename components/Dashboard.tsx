@@ -52,7 +52,11 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout, onVehicl
   const channelRef = useRef<any>(null);
 
   useEffect(() => {
-    setParkingSpot(vehicle?.parking_data || null);
+    if (vehicle?.parking_data) {
+      setParkingSpot(vehicle.parking_data);
+    } else {
+      setParkingSpot(null);
+    }
   }, [vehicle]);
 
   const getFirstName = (name: any) => (name?.trim().split(' ')[0] || 'Motorista');
@@ -221,7 +225,13 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout, onVehicl
         try {
           const { data: { user: authUser } } = await supabase.auth.getUser();
           if (!authUser || !vehicle) throw new Error("Acesso negado.");
-          const newSpot = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now(), photo: photoBase64 || parkingSpot?.photo };
+          
+          const newSpot: ParkingLocation = { 
+            lat: pos.coords.latitude, 
+            lng: pos.coords.longitude, 
+            timestamp: Date.now(), 
+            photo: photoBase64 || parkingSpot?.photo 
+          };
           
           setParkingSpot(newSpot);
           onVehicleUpdate({ ...vehicle, parking_data: newSpot });
@@ -235,23 +245,33 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout, onVehicl
     );
   };
 
+  const compressImage = (base64Str: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = base64Str;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 600; // Reduzido para garantir performance máxima
+        const scaleSize = MAX_WIDTH / img.width;
+        canvas.width = MAX_WIDTH;
+        canvas.height = img.height * scaleSize;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.6)); // 60% qualidade para ser leve e rápido
+      };
+    });
+  };
+
   const handleClearParking = async () => {
-    // Reset Imediato Local
     setParkingSpot(null);
-    if (vehicle) {
-      onVehicleUpdate({ ...vehicle, parking_data: null });
-    }
-    
+    if (vehicle) onVehicleUpdate({ ...vehicle, parking_data: null });
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
-        const { error } = await supabase.from('vehicles').update({ parking_data: null }).eq('user_id', authUser.id);
-        if (error) throw error;
+        await supabase.from('vehicles').update({ parking_data: null }).eq('user_id', authUser.id);
         playConfirmationSound();
       }
-    } catch (err) {
-      console.error("Erro ao sincronizar limpeza:", err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const handleShareLocation = async () => {
@@ -445,10 +465,14 @@ const Dashboard: React.FC<DashboardProps> = ({ vehicle, user, onLogout, onVehicl
                        </div>
                     </div>
                  )}
-                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={(e) => {
+                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" capture="environment" onChange={async (e) => {
                     const file = e.target.files?.[0]; if (!file) return;
                     const reader = new FileReader();
-                    reader.onload = (ev) => handleSaveParking(ev.target?.result as string);
+                    reader.onload = async (ev) => {
+                       const base64 = ev.target?.result as string;
+                       const compressed = await compressImage(base64);
+                       handleSaveParking(compressed);
+                    };
                     reader.readAsDataURL(file);
                  }} />
               </div>
