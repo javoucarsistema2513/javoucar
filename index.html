@@ -1,97 +1,23 @@
-
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>JávouCar - Alertas Veiculares</title>
-    
-    <!-- PWA Meta Tags -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2563eb">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="JávouCar">
-    
-    <!-- Icons and Splash Screens -->
-    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=180&h=180">
-    <link rel="icon" type="image/png" sizes="192x192" href="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=192&h=192">
-    <link rel="shortcut icon" href="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=192&h=192">
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --sat: env(safe-area-inset-top);
-            --sar: env(safe-area-inset-right);
-            --sab: env(safe-area-inset-bottom);
-            --sal: env(safe-area-inset-left);
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #030712;
-            overscroll-behavior-y: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            height: 100dvh;
-            width: 100vw;
-            overflow: hidden;
-            margin: 0;
-            padding: 0;
-        }
-
-        #root {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .pt-safe { padding-top: max(0.5rem, var(--sat)); }
-        .pb-safe { padding-bottom: max(0.5rem, var(--sab)); }
-        
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.99); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes spin-slow {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        .animate-app {
-            animation: fadeIn 0.25s ease-out forwards;
-        }
-        .animate-spin-slow {
-            animation: spin-slow 10s linear infinite;
-        }
-
-        input, select, textarea {
-            font-size: 16px !important; 
-        }
-
-        @media screen and (max-height: 550px) {
-            .hide-on-short-screen { display: none !important; }
-        }
-    </style>
-<script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.4"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
-</head>
-<body class="text-gray-900">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Consolidação IPCC.</title>
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="IPCC." />
+    <link rel="apple-touch-icon" sizes="180x180" href="https://cdn-icons-png.flaticon.com/512/1177/1177577.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="https://cdn-icons-png.flaticon.com/512/1177/1177577.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="https://cdn-icons-png.flaticon.com/512/1177/1177577.png" />
+    <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/512/1177/1177577.png" />
+    <meta name="msapplication-TileColor" content="#2563eb" />
+    <meta name="theme-color" content="#ffffff" />
+  </head>
+  <body>
     <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
-</body>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
+

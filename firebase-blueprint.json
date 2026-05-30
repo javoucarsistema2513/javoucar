@@ -1,0 +1,39 @@
+{
+  "entities": {
+    "Visitor": {
+      "title": "Visitor",
+      "description": "Information about a church visitor.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full name of the visitor"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number"
+        },
+        "address": {
+          "type": "string",
+          "description": "Physical address"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the visitor was registered"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "UID of the user who registered the visitor"
+        }
+      },
+      "required": ["name", "phone", "address", "createdAt", "createdBy"]
+    }
+  },
+  "firestore": {
+    "/visitors/{visitorId}": {
+      "schema": "Visitor",
+      "description": "Collection of all visitors registered in the church."
+    }
+  }
+}

@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidVisitor(data) {
+      return data.keys().hasAll(['name', 'phone', 'address', 'createdAt', 'createdBy'])
+          && data.keys().size() == 5
+          && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+          && data.phone is string && data.phone.size() >= 8 && data.phone.size() <= 20
+          && data.address is string && data.address.size() > 0 && data.address.size() <= 500
+          && data.createdAt == request.time
+          && data.createdBy == request.auth.uid;
+    }
+
+    match /visitors/{visitorId} {
+      allow list: if isSignedIn();
+      allow get: if isSignedIn();
+      
+      allow create: if isSignedIn() 
+        && isValidId(visitorId)
+        && isValidVisitor(request.resource.data);
+
+      allow update: if false; // Visitors are typically immutable in this simple app, or require specific roles
+      allow delete: if false; // Prevent accidental deletion by default
+    }
+  }
+}
